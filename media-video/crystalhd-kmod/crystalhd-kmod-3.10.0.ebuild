@@ -21,6 +21,6 @@ src_compile() {
 src_install() {
 	linux-mod-r1_src_install
 	insinto /lib/firmware
-	doins firmware/fwbin/70015/bcm70015fw.bin
-	doins firmware/fwbin/70012/bcm70012fw.bin
+	[[ ! -f ${ED}/lib/firmware/bcm70015fw.bin ]] && doins firmware/fwbin/70015/bcm70015fw.bin
+	[[ ! -f ${ED}/lib/firmware/bcm70012fw.bin ]] && doins firmware/fwbin/70012/bcm70012fw.bin
 }

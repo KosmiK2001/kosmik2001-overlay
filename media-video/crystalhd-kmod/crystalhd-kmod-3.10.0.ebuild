@@ -14,7 +14,7 @@ SLOT="0"
 KEYWORDS="~amd64"
 
 src_compile() {
-	local modlist=( crystalhd=kernel:src )
+	local modlist=( crystalhd=kernel:. )
 	linux-mod-r1_src_compile
 }
 

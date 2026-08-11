@@ -11,6 +11,9 @@ LICENSE="LGPL-2.1"
 SLOT="0"
 KEYWORDS="~amd64"
 
+IUSE="crystalhd-kmod"
+RDEPEND="crystalhd-kmod? ( media-video/crystalhd-kmod )"
+
 src_compile() {
 	emake -C lib
 }

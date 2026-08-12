@@ -20,8 +20,8 @@ src_compile() {
 
 src_install() {
 	dolib.so lib/libcrystalhd.so.3.6
-	dosym libcrystalhd.so.3.6 /usr/lib/libcrystalhd.so.3
-	dosym libcrystalhd.so.3.6 /usr/lib/libcrystalhd.so
+	dosym libcrystalhd.so.3.6 /usr/$(get_libdir)/libcrystalhd.so.3
+	dosym libcrystalhd.so.3.6 /usr/$(get_libdir)/libcrystalhd.so
 	insinto /usr/include
 	doins include/*.h
 	insinto /usr/include/link

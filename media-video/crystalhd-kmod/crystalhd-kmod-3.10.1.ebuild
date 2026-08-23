@@ -15,6 +15,7 @@ KEYWORDS="~amd64"
 
 src_compile() {
 	local modlist=( crystalhd=kernel:. )
+	local modargs=( SYSSRC="${KV_DIR}" SYSOUT="${KV_OUT_DIR}" )
 	linux-mod-r1_src_compile
 }
 

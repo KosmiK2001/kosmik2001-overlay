@@ -24,10 +24,6 @@ DEPEND="
 "
 RDEPEND="${DEPEND}"
 
-src_prepare() {
-	default
-}
-
 src_configure() {
 	local emesonargs=(
 		-Dgtk3=$(usex gtk3 true false)
@@ -41,12 +37,9 @@ src_compile() {
 
 	# Build kernel module if requested
 	if use module; then
-	# Build kernel module if requested
-	if use module; then
 		local modlist=( asus_oled=extra:kernel )
-		local modargs=( KDIR="${KV_DIR}" )
+		local modargs=( SYSSRC="${KV_DIR}" SYSOUT="${KV_OUT_DIR}" )
 		linux-mod-r1_src_compile
-	fi
 	fi
 }
 
@@ -70,16 +63,19 @@ src_install() {
 
 pkg_postinst() {
 	if use module; then
+		# Run depmod for the installed module (linux-mod-r1_pkg_postinst)
+		linux-mod-r1_pkg_postinst
+
 		elog "Load the kernel module with:"
 		elog "  modprobe asus_oled"
 		elog ""
 		elog "Add to /etc/modules-load.d/ for automatic loading:"
 		elog "  echo asus_oled > /etc/modules-load.d/asus-oled.conf"
 	fi
-	
+
 	elog "Start the daemon:"
 	elog "  systemctl enable --now asus-oled-daemon"
-	
+
 	if use gtk3; then
 		elog ""
 		elog "Launch the GUI:"

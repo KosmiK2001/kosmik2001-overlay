@@ -27,6 +27,24 @@ RDEPEND=">=app-admin/eselect-1.2.4
 
 S="${WORKDIR}/${P}"
 
+pkg_pretend() {
+	# Foolproofing: this package exists to switch between NON-glvnd legacy
+	# implementations (nvidia < 361.28, fglrx) and glvnd-era mesa.
+	# If a libglvnd-capable proprietary driver is installed, glvnd does the
+	# dispatching on its own and our switching is unnecessary and harmful.
+
+	# NVIDIA: libglvnd support (libGLX_nvidia.so.0) was introduced in 361.28
+	if has_version ">=x11-drivers/nvidia-drivers-361.28"; then
+		eerror "x11-drivers/nvidia-drivers >= 361.28 supports libglvnd natively"
+		eerror "(GLX vendor library libGLX_nvidia.so.0). OpenGL dispatch is then"
+		eerror "handled by libglvnd itself and eselect-opengl must not be used."
+		die "eselect-opengl is not needed with libglvnd-capable nvidia drivers."
+	fi
+
+	# fglrx (x11-drivers/ati-drivers, discontinued at Catalyst 15.12): no
+	# version ever supported libglvnd, so all of them are acceptable here.
+}
+
 src_install() {
 	insinto /usr/share/eselect/modules
 	newins opengl.eselect opengl.eselect

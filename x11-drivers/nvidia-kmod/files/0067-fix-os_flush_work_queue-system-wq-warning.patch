@@ -1,0 +1,73 @@
+--- a/kernel/nv-linux.h
++++ b/kernel/nv-linux.h
+@@ -1680,14 +1680,16 @@
+ 
+ typedef struct work_struct nv_task_t;
+ 
++extern struct workqueue_struct *nv_wq;
++
+ typedef struct nv_work_s {
+     nv_task_t task;
+     void *data;
+ } nv_work_t;
+ 
+-#define NV_TASKQUEUE_SCHEDULE(work) schedule_work(work)
++#define NV_TASKQUEUE_SCHEDULE(work) queue_work(nv_wq, (work))
+ #define NV_TASKQUEUE_FLUSH()                           \
+-    flush_scheduled_work();
++    flush_workqueue(nv_wq);
+ #if (NV_INIT_WORK_ARGUMENT_COUNT == 2)
+ #define NV_TASKQUEUE_INIT(tq,handler,data)             \
+     {                                                  \
+--- a/kernel/nv.c
++++ b/kernel/nv.c
+@@ -706,6 +706,8 @@
+ }
+ #endif /* defined(NV_CHANGE_PAGE_ATTR_BUG_PRESENT) */
+ 
++struct workqueue_struct *nv_wq = NULL;
++
+ int __init nvidia_init_module(void)
+ {
+     RM_STATUS status;
+@@ -724,6 +726,15 @@
+ 
+     nv_user_map_init();
+ 
++    nv_wq = alloc_workqueue("nvidia", 0, 0);
++    if (nv_wq == NULL)
++    {
++        nv_printf(NV_DBG_ERRORS, "NVRM: failed to create work queue!
++");
++        rc = -ENOMEM;
++        goto failed4;
++    }
++
+     rc = nv_heap_create();
+     if (rc < 0)
+     {
+@@ -1045,6 +1056,11 @@
+     NV_KMEM_CACHE_DESTROY(nv_stack_t_cache);
+ 
+ failed4:
++    if (nv_wq != NULL)
++    {
++        destroy_workqueue(nv_wq);
++        nv_wq = NULL;
++    }
+     nv_mem_pool_destroy();
+     nv_heap_destroy();
+ 
+@@ -1059,6 +1075,12 @@
+ 
+     nv_printf(NV_DBG_INFO, "NVRM: nvidia_exit_module\n");
+ 
++    if (nv_wq != NULL)
++    {
++        destroy_workqueue(nv_wq);
++        nv_wq = NULL;
++    }
++
+     nv_drm_exit(&nv_pci_driver);
+ 
+     if ((dev = (struct pci_dev *)(nv_smu->handle)) != NULL)

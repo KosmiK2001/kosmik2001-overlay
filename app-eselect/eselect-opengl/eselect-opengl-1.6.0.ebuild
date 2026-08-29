@@ -54,7 +54,7 @@ src_install() {
 
 	# boot-time provider detection, runs before any display manager
 	insinto /etc/systemd/system
-	doins opengl-detect.service
+	doins opengl-detect.service opengl-restore.service opengl-restore.path
 }
 
 pkg_preinst() {
@@ -82,8 +82,9 @@ pkg_postinst() {
 
 	# auto-enable the boot-time provider detection
 	if [[ -d /run/systemd/system ]]; then
-		if systemctl enable opengl-detect.service >/dev/null 2>&1; then
+		if systemctl enable opengl-detect.service opengl-restore.path >/dev/null 2>&1; then
 			einfo "opengl-detect.service enabled (runs before display-manager)."
+			einfo "opengl-restore.path enabled (re-applies provider after glvnd/mesa updates)."
 		else
 			ewarn "Failed to enable opengl-detect.service, enable it manually:"
 			ewarn "  systemctl enable opengl-detect.service"

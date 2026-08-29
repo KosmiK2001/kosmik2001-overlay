@@ -12,7 +12,7 @@ SRC_URI="https://github.com/KosmiK2001/${PN}/releases/download/0.8.18/${PN}-0.8.
 LICENSE="GPL-2+"
 SLOT="0"
 KEYWORDS="~amd64 ~x86"
-IUSE="gtk3"
+IUSE="+gtk3"
 
 PDEPEND="
 	>=x11-themes/emerald-themes-0.8.12

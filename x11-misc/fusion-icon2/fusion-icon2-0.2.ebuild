@@ -3,12 +3,9 @@
 
 EAPI=8
 
-inherit git-r3
-
 DESCRIPTION="Fusion Icon 2 - system tray for switching Compiz window managers"
 HOMEPAGE="https://github.com/KosmiK2001/fusion-icon-2"
-EGIT_REPO_URI="https://github.com/KosmiK2001/fusion-icon-2.git"
-EGIT_BRANCH="main"
+SRC_URI="https://github.com/KosmiK2001/fusion-icon-2/releases/download/${PV}/${P}.tar.gz"
 
 LICENSE="GPL-2"
 SLOT="0"
@@ -25,6 +22,8 @@ DEPEND="dev-cpp/gtkmm:3.0
 	upx? ( app-arch/upx )"
 RDEPEND="${DEPEND}
 	gnome-base/librsvg"
+
+S="${WORKDIR}/fusion-icon-2-${PV}"
 
 src_compile() {
 	cd "${S}/src"

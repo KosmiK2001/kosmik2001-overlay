@@ -28,7 +28,7 @@ RDEPEND="${DEPEND}
 
 src_compile() {
 	cd "${S}/src"
-	local emake_args=(ICON_DIR="/usr/share/fusion-icon2" UPX=$(usex upx 1 0))
+	local emake_args=(ICON_DIR="/usr/share/fusion-icon2" USE_UPX=$(usex upx 1 0))
 	use gsettings && emake_args+=(USE_GSETTINGS=1)
 	emake "${emake_args[@]}"
 }

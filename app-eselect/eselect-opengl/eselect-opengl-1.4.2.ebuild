@@ -54,6 +54,7 @@ pkg_postinst() {
 	if [[ -e ${EROOT}/usr/lib64/libGL.so.1 && ! -e ${d}/libGL.so.1 ]]; then
 		mkdir -p "${d}"
 		ln -sfn /usr/lib64/libGL.so.1 "${d}/libGL.so.1"
+		ln -sfn /usr/lib64/libGL.so   "${d}/libGL.so"
 		einfo "Created glvnd mesa OpenGL provider (xorg-x11)."
 	fi
 

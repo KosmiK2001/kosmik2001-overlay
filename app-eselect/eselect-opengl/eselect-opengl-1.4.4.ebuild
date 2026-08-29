@@ -60,10 +60,26 @@ pkg_postinst() {
 
 	if [[ -n ${OLD_IMPL} ]]; then
 		eselect opengl set "${OLD_IMPL}"
-	elif [[ ! -f "${EROOT}/etc/env.d/000opengl" ]]; then
-		elog "No OpenGL profile selected yet."
-		elog "Run 'eselect opengl list' and 'eselect opengl set <impl>'."
-	elog "Enable boot-time provider detection with:"
-	elog "  systemctl enable opengl-detect.service"
 	fi
+
+	# auto-enable the boot-time provider detection
+	if [[ -d /run/systemd/system ]]; then
+		if systemctl enable opengl-detect.service >/dev/null 2>&1; then
+			einfo "opengl-detect.service enabled (runs before display-manager)."
+		else
+			ewarn "Failed to enable opengl-detect.service, enable it manually:"
+			ewarn "  systemctl enable opengl-detect.service"
+		fi
+	else
+		ewarn "systemd is not running: opengl-detect.service was not enabled."
+	fi
+
+	elog "eselect-opengl switches OpenGL implementations."
+	elog "  eselect opengl list        - list installed providers"
+	elog "  eselect opengl show        - show current provider"
+	elog "  eselect opengl set <impl>  - switch (nvidia, fglrx, xorg-x11)"
+	elog "Providers live in /usr/lib*/opengl/<impl>/lib and are populated"
+	elog "by driver ebuilds (mesa/glvnd = xorg-x11, legacy nvidia/fglrx)."
+	elog "opengl-detect.service matches the provider to the loaded GPU"
+	elog "kernel module at boot, before any display manager."
 }

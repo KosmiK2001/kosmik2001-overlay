@@ -24,6 +24,11 @@ RDEPEND=">=app-admin/eselect-1.2.4"
 
 S="${WORKDIR}/${P}"
 
+src_install() {
+	insinto /usr/share/eselect/modules
+	newins opengl.eselect opengl.eselect
+}
+
 pkg_preinst() {
 	# remember the currently selected implementation across upgrades;
 	# the broken self-made module from earlier sessions may print garbage,

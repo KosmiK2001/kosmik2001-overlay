@@ -30,15 +30,14 @@
  int __init nvidia_init_module(void)
  {
      RM_STATUS status;
-@@ -724,6 +726,15 @@
+@@ -724,6 +726,14 @@
  
      nv_user_map_init();
  
 +    nv_wq = alloc_workqueue("nvidia", 0, 0);
 +    if (nv_wq == NULL)
 +    {
-+        nv_printf(NV_DBG_ERRORS, "NVRM: failed to create work queue!
-+");
++        nv_printf(NV_DBG_ERRORS, "NVRM: failed to create work queue!\n");
 +        rc = -ENOMEM;
 +        goto failed4;
 +    }
@@ -46,7 +45,7 @@
      rc = nv_heap_create();
      if (rc < 0)
      {
-@@ -1045,6 +1056,11 @@
+@@ -1045,6 +1055,11 @@
      NV_KMEM_CACHE_DESTROY(nv_stack_t_cache);
  
  failed4:
@@ -58,7 +57,7 @@
      nv_mem_pool_destroy();
      nv_heap_destroy();
  
-@@ -1059,6 +1075,12 @@
+@@ -1059,6 +1074,12 @@
  
      nv_printf(NV_DBG_INFO, "NVRM: nvidia_exit_module\n");
  

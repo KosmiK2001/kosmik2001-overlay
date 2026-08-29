@@ -51,7 +51,7 @@ pkg_postinst() {
 	# make sure the glvnd mesa provider (xorg-x11) exists: a single libGL.so.1
 	# symlink is enough, libGLX/libGLdispatch resolve from /usr/lib64
 	local d="${EROOT}/usr/lib64/opengl/xorg-x11/lib"
-	if [[ -e ${EROOT}/usr/lib64/libGL.so.1 && ! -e ${d}/libGL.so.1 ]]; then
+	if [[ -e ${EROOT}/usr/lib64/libGL.so.1 ]]; then
 		mkdir -p "${d}"
 		ln -sfn /usr/lib64/libGL.so.1 "${d}/libGL.so.1"
 		ln -sfn /usr/lib64/libGL.so   "${d}/libGL.so"

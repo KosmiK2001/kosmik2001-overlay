@@ -93,6 +93,12 @@ src_configure() {
 		$(use_enable mate)
 	)
 
+	# GLVND-era libGL leaves internal symbols (__GLXGL_CORE_FUNCTIONS etc)
+	# undefined when a legacy (non-glvnd) provider is selected; they are
+	# resolved at runtime, so let the linker skip full closure of shared
+	# library dependencies.
+	append-ldflags -Wl,--allow-shlib-undefined
+
 	econf "${myconf[@]}"
 }
 

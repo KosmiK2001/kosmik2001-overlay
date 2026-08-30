@@ -3,7 +3,7 @@
 
 EAPI=8
 
-inherit autotools gnome2-utils
+inherit autotools flag-o-matic gnome2-utils
 
 DESCRIPTION="OpenGL window and compositing manager (nvidia tearing fix included)"
 HOMEPAGE="https://github.com/KosmiK2001/compiz"

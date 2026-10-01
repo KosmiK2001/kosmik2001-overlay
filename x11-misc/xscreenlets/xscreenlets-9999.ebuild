@@ -43,8 +43,10 @@ DEPEND="
 	"
 RDEPEND="${DEPEND}"
 # Нужен только на этапе установки: postinst пакует демона, и после этого
-# upx больше нигде не требуется.
-RDEPEND+=" sys-apps/upx"
+# upx больше нигде не требуется. Категория именно app-arch, а не sys-apps:
+# в дереве gentoo есть только app-arch/upx, и emerge на sys-apps/upx
+# отвечает "there are no ebuilds to satisfy".
+RDEPEND+=" app-arch/upx"
 
 # Плагины грузятся демоном через dlopen(), поэтому их не видно
 # portage'овскому scanner'у зависимостей. Содержимое src/core/applet_manager.c

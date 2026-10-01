@@ -20,17 +20,24 @@ KEYWORDS="**"
 # в исходниках.
 # Проверено ldd по всем 13 плагинам:
 #   librsvg, gdk-pixbuf, libxml2, X11 - нужны всем;
-#   net-libs/libsoup:3 - clearrss и clearweather (разбор RSS/погоды);
-#   dev-libs/json-glib:1 - только clearweather.
+#   net-libs/libsoup:3.0 - clearrss и clearweather (разбор RSS/погоды);
+#   dev-libs/json-glib - только clearweather.
+#
+# Категории указаны по фактическим каталогам дерева gentoo: gtk+ лежит
+# в x11-libs, gdk-pixbuf тоже (а не в dev-libs, как можно ошибиться по
+# pkg-config). dev-libs/gmodule отдельного пакета НЕ существует -
+# gmodule собирается внутри dev-libs/glib, поэтому отдельной строкой он
+# не указывается. У libsoup ветви различаются слотом, а не сокетом:
+# pkg-config libsoup-3.0 соответствует SLOT="3.0" (у ветки 2.74
+# SLOT="2.4"), поэтому сокет именно 3.0. У json-glib слот 0, а не 1.
 DEPEND="
 	>=dev-libs/glib-2.66:2
-	dev-libs/gmodule:2
-	dev-libs/gtk+:3
+	x11-libs/gtk+:3
 	gnome-base/librsvg:2
-	dev-libs/gdk-pixbuf:2
+	x11-libs/gdk-pixbuf:2
 	dev-libs/libxml2:2
-	net-libs/libsoup:3
-	dev-libs/json-glib:1
+	net-libs/libsoup:3.0
+	dev-libs/json-glib:0
 	x11-libs/libX11
 	x11-libs/libXext
 	"

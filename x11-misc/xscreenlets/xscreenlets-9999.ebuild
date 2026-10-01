@@ -14,6 +14,11 @@ LICENSE="MIT"
 SLOT="0"
 KEYWORDS="**"
 
+# Флаг upx включён по умолчанию: упаковка демона экономит 78 КБ и не
+# ломает работу (проверено). Без USE/IUSE колонка USE в emerge -pv пуста,
+# поэтому пакет без флагов выглядит неполным.
+IUSE="+upx"
+
 # conlog ставится урезанной версией (conlog_min). Полный парсер на
 # больших логах брал ~90% CPU и ~290000 строк/с, из-за чего демон
 # становился неубиваемым; сведения в src/widgets/CONLOG-FUNCTIONALITY.md
@@ -40,13 +45,13 @@ DEPEND="
 	dev-libs/json-glib:0
 	x11-libs/libX11
 	x11-libs/libXext
+	upx? ( app-arch/upx )
 	"
 RDEPEND="${DEPEND}"
-# Нужен только на этапе установки: postinst пакует демона, и после этого
-# upx больше нигде не требуется. Категория именно app-arch, а не sys-apps:
-# в дереве gentoo есть только app-arch/upx, и emerge на sys-apps/upx
-# отвечает "there are no ebuilds to satisfy".
-RDEPEND+=" app-arch/upx"
+
+# Категория upx - именно app-arch: в дереве gentoo есть только
+# app-arch/upx, каталога sys-apps/upx не существует, и emerge на
+# sys-apps/upx отвечает "there are no ebuilds to satisfy".
 
 # Плагины грузятся демоном через dlopen(), поэтому их не видно
 # portage'овскому scanner'у зависимостей. Содержимое src/core/applet_manager.c
@@ -212,7 +217,14 @@ pkg_postinst() {
 	#
 	# Отказ упаковки НЕ должен ломать установку: демон и без UPX работоспособен,
 	# поэтому молча продолжаем.
-	if command -v upx >/dev/null 2>&1; then
+	#
+	# Флаг проверяем через use upx, а не только наличие бинаря: при USE="-upx"
+	# демон обязан остаться распакованным, даже если upx есть в системе.
+	if ! use upx; then
+		elog "USE=\"-upx\": демон оставлен без упаковки."
+	elif ! command -v upx >/dev/null 2>&1; then
+		ewarn "USE=\"+upx\", но upx не найден - демон оставлен как есть."
+	else
 		local d="${EROOT}${ED}/usr/bin/xscreenletsd"
 		local before after
 		before=$(stat -c %s "${d}" 2>/dev/null)

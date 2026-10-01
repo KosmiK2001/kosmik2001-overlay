@@ -143,7 +143,12 @@ src_install() {
 	# находил файлов и install-фаза падала.
 
 	# Иконки апплетов (для списка/настроек).
+	# Именно insinto, а не только dodir: dodir лишь создаёт каталог, и
+	# последующий doins ушёл бы в корень пакета. Так и вышло - пять
+	# иконок оказались в /clearrss.svg вместо
+	# /usr/share/icons/xscreenlets/.
 	dodir "/usr/share/icons/xscreenlets"
+	insinto "/usr/share/icons/xscreenlets"
 	for p in clearrss cpu_monitor memory_monitor disk_monitor process_list; do
 		[[ -f icons/${p}.svg ]] && doins "icons/${p}.svg"
 	done

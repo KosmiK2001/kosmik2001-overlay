@@ -262,8 +262,11 @@ src_install() {
 	# /usr/share/icons/xscreenlets/.
 	dodir "/usr/share/icons/xscreenlets"
 	insinto "/usr/share/icons/xscreenlets"
-	for p in clearrss cpu_monitor memory_monitor disk_monitor process_list; do
-		[[ -f icons/${p}.svg ]] && doins "icons/${p}.svg"
+	# Ставим ВСЕ иконки из icons/, а не захардкоженный список: перечень
+	# типов апплетов расширялся, и applet_manager показывал для новых
+	# типов иконку-заглушку application-x-executable.
+	for f in icons/*.svg; do
+		[[ -f ${f} ]] && doins "${f}"
 	done
 
 	# Темы. Раскладка в исходниках неоднородна, и это уже стоило двух

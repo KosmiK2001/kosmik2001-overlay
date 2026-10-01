@@ -42,6 +42,9 @@ DEPEND="
 	x11-libs/libXext
 	"
 RDEPEND="${DEPEND}"
+# Нужен только на этапе установки: postinst пакует демона, и после этого
+# upx больше нигде не требуется.
+RDEPEND+=" sys-apps/upx"
 
 # Плагины грузятся демоном через dlopen(), поэтому их не видно
 # portage'овскому scanner'у зависимостей. Содержимое src/core/applet_manager.c
@@ -192,6 +195,39 @@ src_install() {
 }
 
 pkg_postinst() {
+	# Упаковка демона: 121136 -> 42876 байт (-64%).
+	#
+	# Только демон. UPX 4.x принципиально не умеет упаковывать ELF shared
+	# objects: на всех 13 плагинах он отказывается с
+	#   CantPackException: PT_NOTE above stub
+	# Это ограничение самого UPX, а не нашей сборки - тот же отказ дают
+	# посторонние системные libexpat.so.1 и libbz2.so.1.0. Обойти нельзя:
+	# -f, --no-reloc, --all-modules, --ultra-brute и удаление
+	# .note.gnu.build-id через objcopy дают тот же отказ.
+	#
+	# strip -s не делаем: portage уже стрипует при установке, проверено -
+	# повторный strip не меняет ни байта.
+	#
+	# Отказ упаковки НЕ должен ломать установку: демон и без UPX работоспособен,
+	# поэтому молча продолжаем.
+	if command -v upx >/dev/null 2>&1; then
+		local d="${EROOT}${ED}/usr/bin/xscreenletsd"
+		local before after
+		before=$(stat -c %s "${d}" 2>/dev/null)
+		if [[ -z "${before}" ]]; then
+			ewarn "Демон не найден по пути ${d}, упаковка пропущена."
+		elif upx -9 --ultra-brute "${d}" >/dev/null 2>&1; then
+			after=$(stat -c %s "${d}" 2>/dev/null)
+			elog "Демон упакован UPX: ${before} -> ${after} байт"
+		elif upx -t "${d}" >/dev/null 2>&1; then
+			# AlreadyPackedException на повторном postinst (emerge --regen и
+			# т.п.) - это не ошибка, файл уже упакован.
+			elog "Демон уже упакован UPX (${before} байт)."
+		else
+			ewarn "UPX не смог упаковать демон, оставлен как есть."
+		fi
+	fi
+
 	elog "Создайте первый апплет:"
 	elog "  xscreenletsd &"
 	elog

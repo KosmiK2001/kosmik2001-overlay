@@ -14,10 +14,22 @@ LICENSE="MIT"
 SLOT="0"
 KEYWORDS="**"
 
-# Флаг upx включён по умолчанию: упаковка демона экономит 78 КБ и не
-# ломает работу (проверено). Без USE/IUSE колонка USE в emerge -pv пуста,
-# поэтому пакет без флагов выглядит неполным.
-IUSE="+upx"
+# Флаги отладки выключены по умолчанию осознанно: обычному
+# пользователю они не нужны, пакет работает и без них. Включать их будут
+# те, кто сознательно разбирается.
+#
+#   debug     XS_ENABLE_CRASH_LATCHER - ловец SIGSEGV с backtrace.
+#             Нужен потому, что ядро собрано без CONFIG_ELF_CORE, и
+#             coredump невозможен физически, а gdb на живом демоне не
+#             ловит гонки: под gdb они не проявляются. Без этого флага
+#             узнать, где упал демон, нечем.
+#   memdebug  XS_MEM_DEBUG - SIGUSR1 -> malloc_trim(0) и периодический
+#             лог RSS/mallinfo2. Полезно при подозрении на рост памяти.
+#   sanitize  ASan + UBSan, обязательно с -O0 -g3, иначе отчёты
+#             бесполезны. Ловит гонки, use-after-free, выходы за границы.
+#
+# Любой из них отключает upx - см. проверку в src_install.
+IUSE="+upx debug memdebug sanitize"
 
 # conlog ставится урезанной версией (conlog_min). Полный парсер на
 # больших логах брал ~90% CPU и ~290000 строк/с, из-за чего демон
@@ -48,6 +60,12 @@ DEPEND="
 	upx? ( app-arch/upx )
 	"
 RDEPEND="${DEPEND}"
+
+# При отладочной сборке upx не нужен: упаковка отключается в src_install,
+# потому что ломает backtrace и отчёты санитайзера. Тянуть ~3 МБ
+# зависимости пользователю, который её не использует, незачем.
+# Блок идёт ПОСЛЕ RDEPEND="${DEPEND}", поэтому перекрывает запись выше.
+RDEPEND+=" !debug? ( app-arch/upx )"
 
 # Категория upx - именно app-arch: в дереве gentoo есть только
 # app-arch/upx, каталога sys-apps/upx не существует, и emerge на
@@ -90,14 +108,41 @@ src_compile() {
 	local plugin_dir="/usr/libexec/xscreenlets"
 	local theme_dir="/usr/share/xscreenlets"
 
-	emake EXTRA_CFLAGS="${CFLAGS} ${CPPFLAGS} -DXS_PLUGIN_DIR=\\\"${plugin_dir}\\\" -DXS_THEME_DIR=\\\"${theme_dir}\\\"" \
+	# Флаги отладки -> макросы компилятора. Пустая строка по умолчанию,
+	# обычная сборка не меняется.
+	#
+	# xs_debug_cflags уходит в EXTRA_CFLAGS, а не в CFLAGS: в Makefile
+	# CFLAGS = ... жёстким присваиванием, и внешний CFLAGS затирается.
+	local xs_debug_cflags=""
+	use debug    && xs_debug_cflags+=" -DXS_ENABLE_CRASH_LATCHER"
+	use memdebug && xs_debug_cflags+=" -DXS_MEM_DEBUG"
+
+	if use sanitize; then
+		# ASan/UBSan требуют -O0 -g3. Без них отчёты бесполезны: оптимизатор
+		# выкидывает нужные стек-кадры, и ASan указывает на несуществующее
+		# место. CFLAGS здесь переопределяем целиком, а не дописываем.
+		xs_debug_cflags+=" -DXS_ENABLE_CRASH_LATCHER -DXS_MEM_DEBUG"
+		xs_debug_cflags+=" -fsanitize=address -fsanitize=undefined"
+		xs_debug_cflags+=" -fno-omit-frame-pointer -fno-optimize-sibling-calls"
+		xs_debug_cflags+=" -fno-common -g3 -O0"
+		# ASan перехватывает malloc; conlog держит 200 строк и под санитайзером
+		# это заметно медленнее - снижаем частоту опроса логов, иначе демон
+		# сам станет источником проблем.
+		export XSCREENLETS_MEM_POLL="${XSCREENLETS_MEM_POLL:-300}"
+	fi
+
+	if [[ -n "${xs_debug_cflags}" ]]; then
+		elog "Отладочная сборка:${xs_debug_cflags}"
+	fi
+
+	emake EXTRA_CFLAGS="${CFLAGS} ${CPPFLAGS} -DXS_PLUGIN_DIR=\\\"${plugin_dir}\\\" -DXS_THEME_DIR=\\\"${theme_dir}\\\"${xs_debug_cflags}" \
 		|| die "build failed"
 
 	# conlog_min НЕ входит в цель all (в отличие от полного conlog, см.
 	# верх файла), поэтому собирается отдельным вызовом make. Без этого
 	# build/conlog_min.so не появится, и проверка ниже уронит установку.
 	emake build/conlog_min.so \
-		EXTRA_CFLAGS="${CFLAGS} ${CPPFLAGS} -DXS_PLUGIN_DIR=\\\"${plugin_dir}\\\" -DXS_THEME_DIR=\\\"${theme_dir}\\\"" \
+		EXTRA_CFLAGS="${CFLAGS} ${CPPFLAGS} -DXS_PLUGIN_DIR=\\\"${plugin_dir}\\\" -DXS_THEME_DIR=\\\"${theme_dir}\\\"${xs_debug_cflags}" \
 		|| die "conlog_min build failed"
 
 	# Проверка: пути должны быть реально зашиты, иначе демон будет искать
@@ -134,7 +179,27 @@ src_install() {
 	# Порядок важен: сначала strip (вручную, т.к. FEATURES=strip в этой
 	# системе не задан), затем upx. Обратный порядок бессмысленен - strip
 	# не сможет распаковать, а upx и так пакует уже очищенный бинарник.
-	if use upx; then
+	#
+	# Отладочная сборка и UPX несовместимы: upx сжимает машинный код, и
+	# backtrace из ловца падений, и отчёты ASan указывают на адреса внутри
+	# упакованного образа, а не на исходный код. Молча упакованный отладочный
+	# бинарник бесполезен - поэтому молча НЕ упаковываем, а пишем в elog.
+	local xs_debug_on=0
+	use debug    && xs_debug_on=1
+	use memdebug && xs_debug_on=1
+	use sanitize && xs_debug_on=1
+
+	if [[ ${xs_debug_on} -ne 0 ]]; then
+		# strip -s здесь НЕ делаем, в отличие от обычной ветки ниже.
+		# Он вырезает DWARF, а без него бесполезны:
+		#   - heaptrack: перехват malloc идёт через LD_PRELOAD и работает,
+		#     но имена функций в стеке берутся из DWARF - будут адреса
+		#     вместо xs_core_*;
+		#   - backtrace ловца падений: тот же DWARF;
+		#   - отчёты ASan/UBSan: символизация требует символов.
+		# -g3 и так приходит из CFLAGS при USE=sanitize.
+		elog "Отладочная сборка: UPX пропущен (упаковка ломает backtrace и отчёты санитайзера)."
+	elif use upx; then
 		if command -v upx >/dev/null 2>&1; then
 			strip -s build/xscreenletsd 2>/dev/null
 			if upx -9 --ultra-brute build/xscreenletsd >/dev/null 2>&1; then

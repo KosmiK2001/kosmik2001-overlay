@@ -116,6 +116,38 @@ src_install() {
 	local d p
 
 	# Пакет собирается ради GTK+-приложений; демон - главный бинарник.
+	#
+	# UPX применяется ЗДЕСЬ, до dobin, а не в pkg_postinst. Причина в
+	# порядке фаз portage: merge -> postinst -> AUTOCLEAN-unmerge. Упаковка
+	# в postinst бессмысленна: CONTENTS хранит md5 неупакованного файла,
+	# после упаковки md5 меняется, и AUTOCLEAN считает файл посторонним и
+	# удаляет его, после чего merge пишет свежую неупакованную копию.
+	# Именно так это и выглядело на живой установке: postinst отработал и
+	# сообщил "Демон упакован UPX: 121136 -> 42876", а на диске лежал
+	# неупакованный файл с md5, совпадающим с CONTENTS.
+	#
+	# Упаковка до merge даёт верный CONTENTS: md5 в базе соответствует
+	# упакованному бинарнику, и AUTOCLEAN его не трогает. Так же сделано
+	# в x11-misc/fusion-icon2 из этого же оверлея - проверено: там
+	# /usr/bin/fusion-icon2 упакован, и его md5 совпадает с CONTENTS.
+	#
+	# Порядок важен: сначала strip (вручную, т.к. FEATURES=strip в этой
+	# системе не задан), затем upx. Обратный порядок бессмысленен - strip
+	# не сможет распаковать, а upx и так пакует уже очищенный бинарник.
+	if use upx; then
+		if command -v upx >/dev/null 2>&1; then
+			strip -s build/xscreenletsd 2>/dev/null
+			if upx -9 --ultra-brute build/xscreenletsd >/dev/null 2>&1; then
+				elog "Демон упакован UPX: $(stat -c %s build/xscreenletsd) байт"
+			else
+				ewarn "UPX не смог упаковать демон, будет поставлен как есть."
+			fi
+		else
+			ewarn "USE=\"+upx\", но upx не найден - демон оставлен как есть."
+		fi
+	else
+		elog "USE=\"-upx\": демон без упаковки."
+	fi
 	dobin build/xscreenletsd
 
 	# build/xclock - отдельная standalone-версия часов, собирается
@@ -202,45 +234,9 @@ src_install() {
 }
 
 pkg_postinst() {
-	# Упаковка демона: 121136 -> 42876 байт (-64%).
-	#
-	# Только демон. UPX 4.x принципиально не умеет упаковывать ELF shared
-	# objects: на всех 13 плагинах он отказывается с
-	#   CantPackException: PT_NOTE above stub
-	# Это ограничение самого UPX, а не нашей сборки - тот же отказ дают
-	# посторонние системные libexpat.so.1 и libbz2.so.1.0. Обойти нельзя:
-	# -f, --no-reloc, --all-modules, --ultra-brute и удаление
-	# .note.gnu.build-id через objcopy дают тот же отказ.
-	#
-	# strip -s не делаем: portage уже стрипует при установке, проверено -
-	# повторный strip не меняет ни байта.
-	#
-	# Отказ упаковки НЕ должен ломать установку: демон и без UPX работоспособен,
-	# поэтому молча продолжаем.
-	#
-	# Флаг проверяем через use upx, а не только наличие бинаря: при USE="-upx"
-	# демон обязан остаться распакованным, даже если upx есть в системе.
-	if ! use upx; then
-		elog "USE=\"-upx\": демон оставлен без упаковки."
-	elif ! command -v upx >/dev/null 2>&1; then
-		ewarn "USE=\"+upx\", но upx не найден - демон оставлен как есть."
-	else
-		local d="${EROOT}${ED}/usr/bin/xscreenletsd"
-		local before after
-		before=$(stat -c %s "${d}" 2>/dev/null)
-		if [[ -z "${before}" ]]; then
-			ewarn "Демон не найден по пути ${d}, упаковка пропущена."
-		elif upx -9 --ultra-brute "${d}" >/dev/null 2>&1; then
-			after=$(stat -c %s "${d}" 2>/dev/null)
-			elog "Демон упакован UPX: ${before} -> ${after} байт"
-		elif upx -t "${d}" >/dev/null 2>&1; then
-			# AlreadyPackedException на повторном postinst (emerge --regen и
-			# т.п.) - это не ошибка, файл уже упакован.
-			elog "Демон уже упакован UPX (${before} байт)."
-		else
-			ewarn "UPX не смог упаковать демон, оставлен как есть."
-		fi
-	fi
+	# Упаковки демона здесь нет намеренно: см. длинный комментарий в
+	# src_install. Упаковка в postinst откатывается AUTOCLEAN-unmerge,
+	# потому что CONTENTS хранит md5 неупакованного файла.
 
 	elog "Создайте первый апплет:"
 	elog "  xscreenletsd &"

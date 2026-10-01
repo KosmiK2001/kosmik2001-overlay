@@ -120,8 +120,12 @@ src_install() {
 	exeinto "${PLUGIN_DIR}"
 	newexe build/conlog_min.so conlog.so
 
-	# Плагины грузятся через dlopen(), поэтому им нужен исполняемый бит.
-	fperms 0755 "${ED}/${PLUGIN_DIR}"/*.so
+	# Права отдельно не выставляем: newexe и сам ставит 0755 на все
+	# установленные .so (проверено на реальной сборке - все 13 файлов
+	# получили 755). Прежняя попытка сделать это через fperms ломала
+	# установку: fperms сам префиксует ${ED}, и путь "${ED}/${PLUGIN_DIR}"
+	# давал вдвое - image/.../image//libexec/..., после чего chmod не
+	# находил файлов и install-фаза падала.
 
 	# Иконки апплетов (для списка/настроек).
 	dodir "${EPREFIX}/share/icons/xscreenlets"

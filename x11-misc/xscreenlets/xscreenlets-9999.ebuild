@@ -63,25 +63,40 @@ DOCS=( README.md CONFIG_SCHEME.md )
 # над пакетными, поэтому настройка не перекрывается установкой.
 # ---------------------------------------------------------------------------
 
-PLUGIN_DIR="${EPREFIX}/libexec/xscreenlets"
-THEME_DIR="${EPREFIX}/share/xscreenlets"
+# EPREFIX здесь пуст (ROOT=/), поэтому ${EPREFIX}/... дало бы /libexec
+# вместо /usr/libexec. Пути жёстко /usr: профиль merged-usr, usrmerge
+# делает /bin симлинком на usr/bin, из-за чего демон случайно оказывался
+# в правильном месте, а плагины и темы - нет.
+PLUGIN_DIR="/usr/libexec/xscreenlets"
+THEME_DIR="/usr/share/xscreenlets"
 
 src_compile() {
-	local plugin_dir="${PLUGIN_DIR}" theme_dir="${THEME_DIR}"
+	# Пути, зашиваемые в демон. Пакет ставится в /usr, а EPREFIX здесь
+	# пуст (ROOT=/), поэтому ${EPREFIX}/libexec дало бы /libexec - мимо
+	# /usr. Значения идут в EXTRA_CFLAGS, а не в append-cflags/CFLAGS:
+	# в Makefile CFLAGS = ... жёстким присваиванием, и переданный извне
+	# CFLAGS затирается. EXTRA_CFLAGS дописывается в конец и перекрывает
+	# базовые -O2/-g3, что и нужно.
+	local plugin_dir="/usr/libexec/xscreenlets"
+	local theme_dir="/usr/share/xscreenlets"
 
-	append-cflags \
-		-DXS_PLUGIN_DIR="\"${plugin_dir}\"" \
-		-DXS_THEME_DIR="\"${theme_dir}\""
-
-	# В Makefile EXTRA_CFLAGS, а не CPPFLAGS: этот же список попадает
-	# в строки линковки плагинов, и -D в них не нужен.
-	emake EXTRA_CFLAGS="${CFLAGS} ${CPPFLAGS}" || die "build failed"
+	emake EXTRA_CFLAGS="${CFLAGS} ${CPPFLAGS} -DXS_PLUGIN_DIR=\\\"${plugin_dir}\\\" -DXS_THEME_DIR=\\\"${theme_dir}\\\"" \
+		|| die "build failed"
 
 	# conlog_min НЕ входит в цель all (в отличие от полного conlog, см.
 	# верх файла), поэтому собирается отдельным вызовом make. Без этого
 	# build/conlog_min.so не появится, и проверка ниже уронит установку.
-	emake build/conlog_min.so EXTRA_CFLAGS="${CFLAGS} ${CPPFLAGS}" \
+	emake build/conlog_min.so \
+		EXTRA_CFLAGS="${CFLAGS} ${CPPFLAGS} -DXS_PLUGIN_DIR=\\\"${plugin_dir}\\\" -DXS_THEME_DIR=\\\"${theme_dir}\\\"" \
 		|| die "conlog_min build failed"
+
+	# Проверка: пути должны быть реально зашиты, иначе демон будет искать
+	# плагины и темы в $HOME и пакет окажется нерабочим. Раньше такая
+	# проверка отсутствовала, и это молча ломало установку.
+	grep -q "${plugin_dir}" build/xscreenletsd \
+		|| die "XS_PLUGIN_DIR did not get compiled in (${plugin_dir} not in daemon)"
+	grep -q "${theme_dir}" build/xscreenletsd \
+		|| die "XS_THEME_DIR did not get compiled in (${theme_dir} not in daemon)"
 }
 
 # Установка делается вручную, а не через make install: в Makefile
@@ -128,7 +143,7 @@ src_install() {
 	# находил файлов и install-фаза падала.
 
 	# Иконки апплетов (для списка/настроек).
-	dodir "${EPREFIX}/share/icons/xscreenlets"
+	dodir "/usr/share/icons/xscreenlets"
 	for p in clearrss cpu_monitor memory_monitor disk_monitor process_list; do
 		[[ -f icons/${p}.svg ]] && doins "icons/${p}.svg"
 	done

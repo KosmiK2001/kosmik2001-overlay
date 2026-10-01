@@ -57,15 +57,21 @@ DEPEND="
 	dev-libs/json-glib:0
 	x11-libs/libX11
 	x11-libs/libXext
-	upx? ( app-arch/upx )
 	"
-RDEPEND="${DEPEND}"
 
-# При отладочной сборке upx не нужен: упаковка отключается в src_install,
-# потому что ломает backtrace и отчёты санитайзера. Тянуть ~3 МБ
-# зависимости пользователю, который её не использует, незачем.
-# Блок идёт ПОСЛЕ RDEPEND="${DEPEND}", поэтому перекрывает запись выше.
-RDEPEND+=" !debug? ( app-arch/upx )"
+# upx нужен только когда демон реально упаковывается, то есть при
+# USE=upx и БЕЗ отладочных флагов. Раньше стояло просто
+# "upx? ( app-arch/upx )", и этого мало: при USE="debug" флаг upx
+# остаётся включённым (+upx -debug), поэтому upx тянулся даже там, где
+# src_install его не использует.
+# "!debug? ( )" в RDEPEND проблему не решает: это ЗАПРЕТ пакета при
+# USE=debug, который складывается с требованием выше в конфликт
+# резолва при USE="debug upx".
+#
+# Правильная форма - единственное условие сразу на обоих флагах.
+# Проверено на --emptytree: без debug upx тянется, с любым из debug,
+# memdebug, sanitize - не тянутся.
+RDEPEND="${DEPEND} upx? ( !debug? ( !memdebug? ( !sanitize? ( app-arch/upx ) ) ) )"
 
 # Категория upx - именно app-arch: в дереве gentoo есть только
 # app-arch/upx, каталога sys-apps/upx не существует, и emerge на

@@ -76,6 +76,12 @@ src_compile() {
 	# В Makefile EXTRA_CFLAGS, а не CPPFLAGS: этот же список попадает
 	# в строки линковки плагинов, и -D в них не нужен.
 	emake EXTRA_CFLAGS="${CFLAGS} ${CPPFLAGS}" || die "build failed"
+
+	# conlog_min НЕ входит в цель all (в отличие от полного conlog, см.
+	# верх файла), поэтому собирается отдельным вызовом make. Без этого
+	# build/conlog_min.so не появится, и проверка ниже уронит установку.
+	emake build/conlog_min.so EXTRA_CFLAGS="${CFLAGS} ${CPPFLAGS}" \
+		|| die "conlog_min build failed"
 }
 
 # Установка делается вручную, а не через make install: в Makefile
@@ -94,22 +100,28 @@ src_install() {
 
 	# 12 плагинов из цели all. Имена соответствуют TARGET_*_PLUGIN.
 	# conlog в all не входит, его ставим отдельно, итого 13.
+	#
+	# newexe принимает РОВНО два аргумента (newexe <src> <dest>) - параметра
+	# -m у него нет, и передача третьего аргумента валит установку с
+	# "newexe: -m does not exist". Права задаются через fperms отдельно.
 	dodir "${PLUGIN_DIR}"
 	for p in clock calendar launcher frame_launcher clearrss clearweather \
 	         cpu_monitor memory_monitor disk_monitor network_monitor \
 	         sensors process_list; do
 		[[ -f build/${p}.so ]] || die "missing plugin: ${p}.so"
 		exeinto "${PLUGIN_DIR}"
-		newexe -m 0755 "build/${p}.so" "${p}.so"
+		newexe "build/${p}.so" "${p}.so"
 	done
 
 	# conlog_min ставится под именем conlog.so. Полная версия
 	# (build/conlog.so) в all не входит, и если она почему-то
-	# собралась, её игнорируем: см. описание IUSE выше.
-	# make build/conlog_min.so
+	# собралась, её игнорируем: см. описание вверху файла.
 	[[ -f build/conlog_min.so ]] || die "missing conlog_min.so"
 	exeinto "${PLUGIN_DIR}"
-	newexe -m 0755 build/conlog_min.so conlog.so
+	newexe build/conlog_min.so conlog.so
+
+	# Плагины грузятся через dlopen(), поэтому им нужен исполняемый бит.
+	fperms 0755 "${ED}/${PLUGIN_DIR}"/*.so
 
 	# Иконки апплетов (для списка/настроек).
 	dodir "${EPREFIX}/share/icons/xscreenlets"
@@ -117,22 +129,41 @@ src_install() {
 		[[ -f icons/${p}.svg ]] && doins "icons/${p}.svg"
 	done
 
-	# Темы: ВСЕ файлы в каждом каталоге темы, а не только *.svg.
+	# Темы. Раскладка в исходниках неоднородна, и это уже стоило двух
+	# потерянных тем:
 	#
-	# Перечислять списком нельзя - так уже терялись shadow_mid.svg,
+	#   themes/clearrss/<тема>/*.svg    - подкаталог темы
+	#   themes/clearweather/*.png       - каталог апплета БЕЗ подкаталога
+	#
+	# Оба апплета ищут тему как themes/<апплет>/<тема> (cw_find_theme
+	# в clearweather.c подставляет "clearweather/default"), поэтому
+	# clearweather надо положить в themes/clearweather/default - иначе
+	# цикл themes/*/*/ его пропускает молча, а погода остаётся без темы.
+	#
+	# Перечислять файлы списком нельзя: так терялись shadow_mid.svg,
 	# shadow.svg и button_bg.svg, и апплет выходил без теней кнопок.
-	#
-	# Нужен и не-SVG: тема clearweather состоит из 49 PNG (0.png ... 48.png -
-	# кадры анимации погоды) плюс svg и theme.conf. Апплет ищет тему по
-	# наличию 0.png (cw_find_theme в clearweather.c), поэтому при установке
-	# одних svg апплет сочтёт тему отсутствующей и уйдёт в "тема не
-	# найдена". Ставим всё содержимое каталога.
-	for t in themes/*/*/; do
+	local t base sub
+	for t in themes/*/; do
 		[[ -d ${t} ]] || continue
-		local sub="${THEME_DIR}/${t#themes/}"
-		dodir "${sub}"
-		insinto "${sub}"
-		doins "${t}"*
+		base=$(basename "${t}")
+
+		# themes/<апплет>/<тема>/ - обычный случай
+		local d
+		for d in "${t}"*/; do
+			[[ -d ${d} ]] || continue
+			sub="${THEME_DIR}/${base}/$(basename "${d}")"
+			dodir "${sub}"
+			insinto "${sub}"
+			doins "${d}"*
+		done
+
+		# themes/<апплет>/*.png - тема лежит прямо в каталоге апплета
+		if compgen -G "${t}*.png" >/dev/null; then
+			sub="${THEME_DIR}/${base}/default"
+			dodir "${sub}"
+			insinto "${sub}"
+			doins "${t}"*
+		fi
 	done
 }
 

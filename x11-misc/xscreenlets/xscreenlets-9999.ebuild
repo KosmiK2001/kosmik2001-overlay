@@ -1,0 +1,142 @@
+# Copyright 2025 Gentoo Authors
+# Distributed under the terms of the GNU General Public License v2
+
+EAPI=8
+
+inherit git-r3
+
+DESCRIPTION="C/GTK3 rewrite of screenlets: desktop applets on the X root window"
+HOMEPAGE="https://github.com/KosmiK2001/xscreenlets"
+EGIT_REPO_URI="https://github.com/KosmiK2001/xscreenlets.git"
+EGIT_BRANCH="main"
+
+LICENSE="MIT"
+SLOT="0"
+KEYWORDS="**"
+
+# conlog ставится урезанной версией (conlog_min). Полный парсер на
+# больших логах брал ~90% CPU и ~290000 строк/с, из-за чего демон
+# становился неубиваемым; сведения в src/widgets/CONLOG-FUNCTIONALITY.md
+# в исходниках.
+# Проверено ldd по всем 13 плагинам:
+#   librsvg, gdk-pixbuf, libxml2, X11 - нужны всем;
+#   net-libs/libsoup:3 - clearrss и clearweather (разбор RSS/погоды);
+#   dev-libs/json-glib:1 - только clearweather.
+DEPEND="
+	>=dev-libs/glib-2.66:2
+	dev-libs/gmodule:2
+	dev-libs/gtk+:3
+	gnome-base/librsvg:2
+	dev-libs/gdk-pixbuf:2
+	dev-libs/libxml2:2
+	net-libs/libsoup:3
+	dev-libs/json-glib:1
+	x11-libs/libX11
+	x11-libs/libXext
+	"
+RDEPEND="${DEPEND}"
+
+# Плагины грузятся демоном через dlopen(), поэтому их не видно
+# portage'овскому scanner'у зависимостей. Содержимое src/core/applet_manager.c
+# содержит dlopen() со строковым аргументом, но не литерал ".so" вплотную
+# к нему, и без USE="module" ebuild считается битым.
+RESTRICT="test"
+
+DOCS=( README.md CONFIG_SCHEME.md )
+
+# ---------------------------------------------------------------------------
+# Пути. Задаются на этапе компиляции через -D, а не вписываются в
+# исходники, поэтому один и тот же tarball годится и для /usr, и для
+# другого префикса.
+#
+# Демон ищет плагины сначала в каталоге пользователя
+# (~/lib/xscreenlets/plugins), затем в XS_PLUGIN_DIR, а темы - в
+# $XDG_CONFIG_HOME/xscreenlets/themes, затем в ~/.xscreenlets/themes и
+# только потом в XS_THEME_DIR. Пользовательские ресурсы имеют приоритет
+# над пакетными, поэтому настройка не перекрывается установкой.
+# ---------------------------------------------------------------------------
+
+PLUGIN_DIR="${EPREFIX}/libexec/xscreenlets"
+THEME_DIR="${EPREFIX}/share/xscreenlets"
+
+src_compile() {
+	local plugin_dir="${PLUGIN_DIR}" theme_dir="${THEME_DIR}"
+
+	append-cflags \
+		-DXS_PLUGIN_DIR="\"${plugin_dir}\"" \
+		-DXS_THEME_DIR="\"${theme_dir}\""
+
+	# В Makefile EXTRA_CFLAGS, а не CPPFLAGS: этот же список попадает
+	# в строки линковки плагинов, и -D в них не нужен.
+	emake EXTRA_CFLAGS="${CFLAGS} ${CPPFLAGS}" || die "build failed"
+}
+
+# Установка делается вручную, а не через make install: в Makefile
+# PREFIX по умолчанию $(HOME), и его install-цель кладёт плагины в
+# $(PREFIX)/lib/xscreenlets/plugins, тогда как нам нужно libexec.
+src_install() {
+	local d p
+
+	# Пакет собирается ради GTK+-приложений; демон - главный бинарник.
+	dobin build/xscreenletsd
+
+	# build/xclock - отдельная standalone-версия часов, собирается
+	# как побочный продукт и в поставку не входит: ему нужен свой
+	# набор тем, и пользователю он не нужен при установленном пакете.
+	rm -f build/xclock
+
+	# 12 плагинов из цели all. Имена соответствуют TARGET_*_PLUGIN.
+	# conlog в all не входит, его ставим отдельно, итого 13.
+	dodir "${PLUGIN_DIR}"
+	for p in clock calendar launcher frame_launcher clearrss clearweather \
+	         cpu_monitor memory_monitor disk_monitor network_monitor \
+	         sensors process_list; do
+		[[ -f build/${p}.so ]] || die "missing plugin: ${p}.so"
+		exeinto "${PLUGIN_DIR}"
+		newexe -m 0755 "build/${p}.so" "${p}.so"
+	done
+
+	# conlog_min ставится под именем conlog.so. Полная версия
+	# (build/conlog.so) в all не входит, и если она почему-то
+	# собралась, её игнорируем: см. описание IUSE выше.
+	# make build/conlog_min.so
+	[[ -f build/conlog_min.so ]] || die "missing conlog_min.so"
+	exeinto "${PLUGIN_DIR}"
+	newexe -m 0755 build/conlog_min.so conlog.so
+
+	# Иконки апплетов (для списка/настроек).
+	dodir "${EPREFIX}/share/icons/xscreenlets"
+	for p in clearrss cpu_monitor memory_monitor disk_monitor process_list; do
+		[[ -f icons/${p}.svg ]] && doins "icons/${p}.svg"
+	done
+
+	# Темы: ВСЕ *.svg в каждом каталоге темы. Перечислять списком нельзя
+	# - так уже терялись shadow_mid.svg, shadow.svg и button_bg.svg,
+	# и апплет выходил без теней кнопок. Цикл подхватывает новые файлы
+	# сам.
+	for t in themes/*/*/; do
+		[[ -d ${t} ]] || continue
+		dodir "${THEME_DIR}/${t#themes/}"
+		insinto "${THEME_DIR}/${t#themes/}"
+		doins "${t}"*.svg
+	done
+}
+
+pkg_postinst() {
+	elog "Создайте первый апплет:"
+	elog "  xscreenletsd &"
+	elog
+	elog "Плагины:      ${PLUGIN_DIR}"
+	elog "Системные темы: ${THEME_DIR}"
+	elog
+	elog "Пользовательские ресурсы имеют приоритет над пакетными:"
+	elog "  плагины: ~/lib/xscreenlets/plugins"
+	elog "  темы:    ~/.config/xscreenlets/themes/<апплет>/<тема>"
+	elog
+	if [[ -d /usr/share/screenlets ]]; then
+		ewarn "В системе остались темы оригинальных screenlets (python2) в"
+		ewarn "/usr/share/screenlets. Апплеты попробуют взять тему оттуда,"
+		ewarn "если своей не найдут. Если это нежелательно, переименуйте"
+		ewarn "каталог или задайте тему явно."
+	fi
+}

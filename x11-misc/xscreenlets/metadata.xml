@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE pkgmetadata SYSTEM "https://www.gentoo.org/dtd/metadata.dtd">
+<pkgmetadata>
+	<maintainer type="person">
+		<email>kosmik2001@gmail.com</email>
+		<name>kosmik2001</name>
+	</maintainer>
+	<longdescription lang="en">
+		C/GTK3 rewrite of screenlets: lightweight applets that live on the X11
+		root window. Each applet is a shared object loaded by xscreenletsd at
+		runtime, drawn directly onto the root window without a compositor.
+
+		Shipped applets: clock, calendar, launcher, frame_launcher, clearrss,
+		clearweather, cpu_monitor, memory_monitor, disk_monitor,
+		network_monitor, sensors, process_list and conlog.
+
+		Theme and plugin search order puts per-user resources first
+		(~/lib/xscreenlets/plugins, ~/.config/xscreenlets/themes), so an
+		individual configuration is never overridden by the installed set.
+		System locations are compiled in and can be overridden at runtime
+		with --plugdir and --themedir.
+
+		Note: the original python2 screenlets may still be installed
+		separately; themes from /usr/share/screenlets are used as a last
+		resort when no themed resource is found for an applet.
+	</longdescription>
+	<longdescription lang="ru">
+		Переписанные на C/GTK3 апплеты screenlets: лёгкие виджеты, живущие
+		на корневом окне X11. Каждый апплет — отдельная разделяемая
+		библиотека, которую xscreenletsd подгружает на лету и рисует прямо
+		на корневом окне, без композитора.
+
+		В поставке: часы, календарь, лаунчер, панель рамки, RSS-погода
+		(clearrss), погода, мониторы CPU/памяти/диска/сети, датчики,
+		список процессов и консольный лог.
+
+		Плагины и темы ищутся сперва в каталогах пользователя
+		(~/lib/xscreenlets/plugins, ~/.config/xscreenlets/themes), поэтому
+		настройка конкретного пользователя не перекрывается установленным
+		пакетом. Системные пути задаются при сборке и переопределяются
+		ключами --plugdir и --themedir.
+
+		Замечание: оригинальные screenlets на python2 могут быть установлены
+		отдельно; темы из /usr/share/screenlets используются в последнюю
+		очередь, если для апплета не нашлось своей темы.
+	</longdescription>
+	<upstream>
+		<remote-id type="github">KosmiK2001/xscreenlets</remote-id>
+	</upstream>
+</pkgmetadata>

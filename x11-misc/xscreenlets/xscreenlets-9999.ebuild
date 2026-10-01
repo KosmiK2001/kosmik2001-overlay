@@ -117,15 +117,22 @@ src_install() {
 		[[ -f icons/${p}.svg ]] && doins "icons/${p}.svg"
 	done
 
-	# Темы: ВСЕ *.svg в каждом каталоге темы. Перечислять списком нельзя
-	# - так уже терялись shadow_mid.svg, shadow.svg и button_bg.svg,
-	# и апплет выходил без теней кнопок. Цикл подхватывает новые файлы
-	# сам.
+	# Темы: ВСЕ файлы в каждом каталоге темы, а не только *.svg.
+	#
+	# Перечислять списком нельзя - так уже терялись shadow_mid.svg,
+	# shadow.svg и button_bg.svg, и апплет выходил без теней кнопок.
+	#
+	# Нужен и не-SVG: тема clearweather состоит из 49 PNG (0.png ... 48.png -
+	# кадры анимации погоды) плюс svg и theme.conf. Апплет ищет тему по
+	# наличию 0.png (cw_find_theme в clearweather.c), поэтому при установке
+	# одних svg апплет сочтёт тему отсутствующей и уйдёт в "тема не
+	# найдена". Ставим всё содержимое каталога.
 	for t in themes/*/*/; do
 		[[ -d ${t} ]] || continue
-		dodir "${THEME_DIR}/${t#themes/}"
-		insinto "${THEME_DIR}/${t#themes/}"
-		doins "${t}"*.svg
+		local sub="${THEME_DIR}/${t#themes/}"
+		dodir "${sub}"
+		insinto "${sub}"
+		doins "${t}"*
 	done
 }
 

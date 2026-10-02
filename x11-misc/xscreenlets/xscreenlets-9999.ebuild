@@ -57,6 +57,7 @@ DEPEND="
 	dev-libs/json-glib:0
 	x11-libs/libX11
 	x11-libs/libXext
+	sys-devel/gettext
 	"
 
 # upx нужен только когда демон реально упаковывается, то есть при
@@ -151,6 +152,11 @@ src_compile() {
 		EXTRA_CFLAGS="${CFLAGS} ${CPPFLAGS} -DXS_PLUGIN_DIR=\\\"${plugin_dir}\\\" -DXS_THEME_DIR=\\\"${theme_dir}\\\"${xs_debug_cflags}" \
 		|| die "conlog_min build failed"
 
+	# Каталог переводов. Отдельный от ${EROOT}/usr/share/locale по
+	# умолчанию Gentoo: пакет ставит .mo через цикл ниже, и путь
+	# должен совпадать с тем, что зашит в демон через XS_LOCALEDIR.
+	localedir="${EROOT}/usr/share/locale"
+
 	# Проверка: пути должны быть реально зашиты, иначе демон будет искать
 	# плагины и темы в $HOME и пакет окажется нерабочим. Раньше такая
 	# проверка отсутствовала, и это молча ломало установку.
@@ -158,6 +164,19 @@ src_compile() {
 		|| die "XS_PLUGIN_DIR did not get compiled in (${plugin_dir} not in daemon)"
 	grep -q "${theme_dir}" build/xscreenletsd \
 		|| die "XS_THEME_DIR did not get compiled in (${theme_dir} not in daemon)"
+	grep -q "${localedir}" build/xscreenletsd \
+		|| die "XS_LOCALEDIR did not get compiled in (${localedir} not in daemon)"
+	# Без этого демон запускается, но gettext ищет переводы не там, и
+	# интерфейс молча остаётся английским. Проверка ловит именно это:
+	# сборка успешна, ошибок нет, перевода нет.
+
+	# Переводы. msgfmt берётся из sys-devel/gettext, добавленного в
+	# DEPEND. Каталог .mo задаётся через LOCALEDIR: он попадает в
+	# Makefile как -DXS_LOCALEDIR, и демон ищет переводы именно там.
+	# Без этой цели демон соберётся, но интерфейс останется
+	# английским - поэтому она обязательна, а не опциональна.
+	make locale LOCALEDIR="${localedir}" \
+		|| die "locale build failed"
 }
 
 # Установка делается вручную, а не через make install: в Makefile
@@ -233,9 +252,13 @@ src_install() {
 	# -m у него нет, и передача третьего аргумента валит установку с
 	# "newexe: -m does not exist". Права задаются через fperms отдельно.
 	dodir "${PLUGIN_DIR}"
+	# Список из 12 в цикле + conlog_min отдельно = 13. acpi_battery в
+	# этот список добавлен 14-м: у него есть собственный core
+	# (acpi_battery_core.c), который тоже собирается, - без отдельной
+	# проверки отсутствие core.o даст невнятную ошибку линковки.
 	for p in clock calendar launcher frame_launcher clearrss clearweather \
 	         cpu_monitor memory_monitor disk_monitor network_monitor \
-	         sensors process_list; do
+	         sensors process_list acpi_battery; do
 		[[ -f build/${p}.so ]] || die "missing plugin: ${p}.so"
 		exeinto "${PLUGIN_DIR}"
 		newexe "build/${p}.so" "${p}.so"
@@ -304,6 +327,33 @@ src_install() {
 			insinto "${sub}"
 			doins "${t}"*
 		fi
+	done
+
+	# Переводы: build/locale/<язык>/LC_MESSAGES/xscreenlets.mo,
+	# собранные целью locale выше. Ставим циклом по языкам, а не
+	# одним doins - иначе в /usr/share/locale попал бы лишний уровень
+	# build/locale, и gettext каталог не нашёл бы.
+	#
+	# Каталог задаётся явно ${EROOT}/usr/share/locale, тем же, что
+	# зашит в демон через XS_LOCALEDIR (см. src_compile). Русский и
+	# остальные языки - по одному файлу каждый.
+	local mo lang
+	for lang in "${S}/po/"*.po; do
+		[[ -f ${lang} ]] || continue
+		lang=$(basename "${lang}" .po)
+		mo="build/locale/${lang}/LC_MESSAGES/xscreenlets.mo"
+		[[ -f ${mo} ]] || die "missing translation: ${mo}"
+		insinto "/usr/share/locale/${lang}/LC_MESSAGES"
+		doins "${mo}"
+	done
+
+	# Список переводов в сообщение emerge: пользователь должен видеть,
+	# какие языки реально установлены, иначе непонятно, почему
+	# интерфейс не переводится.
+	elog "Установлены переводы:"
+	for lang in "${S}/po/"*.po; do
+		[[ -f ${lang} ]] || continue
+		elog "  $(basename "${lang}" .po)"
 	done
 }
 

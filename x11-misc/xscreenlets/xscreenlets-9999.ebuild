@@ -142,7 +142,22 @@ src_compile() {
 		elog "Отладочная сборка:${xs_debug_cflags}"
 	fi
 
+	# Каталог переводов. Объявляется ДО вызовов make.
+	#
+	# Передаётся отдельной переменной LOCALEDIR, а не через
+	# EXTRA_CFLAGS: переменная на командной строке make имеет приоритет
+	# над присваиваниями в Makefile, поэтому перекрытый EXTRA_CFLAGS
+	# молча съедает все "EXTRA_CFLAGS +=". На этом потерялся
+	# -DXS_LOCALEDIR, и сборка падала на собственной проверке ebuild:
+	#
+	#   XS_LOCALEDIR did not get compiled in (/usr/share/locale not in daemon)
+	#
+	# -DXS_PLUGIN_DIR и -DXS_THEME_DIR дублируются в EXTRA_CFLAGS
+	# специально, поэтому перекрытие их не затрагивает.
+	localedir="${EROOT}/usr/share/locale"
+
 	emake EXTRA_CFLAGS="${CFLAGS} ${CPPFLAGS} -DXS_PLUGIN_DIR=\\\"${plugin_dir}\\\" -DXS_THEME_DIR=\\\"${theme_dir}\\\"${xs_debug_cflags}" \
+		LOCALEDIR="${localedir}" \
 		|| die "build failed"
 
 	# conlog_min НЕ входит в цель all (в отличие от полного conlog, см.
@@ -150,12 +165,8 @@ src_compile() {
 	# build/conlog_min.so не появится, и проверка ниже уронит установку.
 	emake build/conlog_min.so \
 		EXTRA_CFLAGS="${CFLAGS} ${CPPFLAGS} -DXS_PLUGIN_DIR=\\\"${plugin_dir}\\\" -DXS_THEME_DIR=\\\"${theme_dir}\\\"${xs_debug_cflags}" \
+		LOCALEDIR="${localedir}" \
 		|| die "conlog_min build failed"
-
-	# Каталог переводов. Отдельный от ${EROOT}/usr/share/locale по
-	# умолчанию Gentoo: пакет ставит .mo через цикл ниже, и путь
-	# должен совпадать с тем, что зашит в демон через XS_LOCALEDIR.
-	localedir="${EROOT}/usr/share/locale"
 
 	# Проверка: пути должны быть реально зашиты, иначе демон будет искать
 	# плагины и темы в $HOME и пакет окажется нерабочим. Раньше такая

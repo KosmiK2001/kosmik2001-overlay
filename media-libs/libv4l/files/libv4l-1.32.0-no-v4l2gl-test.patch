@@ -1,0 +1,28 @@
+--- a/contrib/test/meson.build	2026-10-04 04:52:36.396924801 +0300
++++ b/contrib/test/meson.build	2026-10-04 04:52:36.396924801 +0300
+@@ -101,25 +101,6 @@
+                              include_directories : v4l2_utils_incdir)
+ endif
+ 
+-if dep_gl.found() and dep_glu.found() and dep_x11.found()
+-    v4l2gl_sources = files(
+-        'v4l2gl.c',
+-    )
+-
+-    v4l2gl_deps = [
+-        dep_argp,
+-        dep_gl,
+-        dep_glu,
+-        dep_libv4l2,
+-        dep_libv4lconvert,
+-        dep_x11,
+-    ]
+-
+-    v4l2gl = executable('v4l2gl',
+-                        v4l2gl_sources,
+-                        dependencies : v4l2gl_deps,
+-                        include_directories : v4l2_utils_incdir)
+-endif
+ 
+ if dep_jpeg.found() and dep_sdl.found() and dep_sdl_image.found()
+     sdlcam_sources = files(

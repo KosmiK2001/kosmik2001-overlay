@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE pkgmetadata SYSTEM "https://www.gentoo.org/dtd/metadata.dtd">
+<pkgmetadata>
+	<maintainer type="person">
+		<email>kosmik2001@gmail.com</email>
+		<name>kosmik2001</name>
+	</maintainer>
+	<longdescription lang="en">
+		GTK3 application (C11) to watch the tc (traffic control) hierarchy in
+		real time: HTB classes, ingress shaping, mirred to ifb bindings,
+		speeds, drops, overlimits, backlog and a 60-second graph.
+
+		Built for the "Linux router + shapers from /etc/systemd/scripts" setup
+		(wan0 + brlan0 with two ingress legs, fastvpn tunnels), but works on
+		any system with tc from iproute2. Device grouping is configured in the
+		[groups] section (glob patterns), the uplink is picked for the pack
+		aggregate display.
+	</longdescription>
+	<longdescription lang="ru">
+		GTK3-приложение (C11) для наблюдения за иерархией tc (traffic control)
+		в реальном времени: HTB-классы, ingress-шейпинг, связи mirred к ifb,
+		скорости, дропы, оверлимиты, бэклог и 60-секундный график.
+
+		Разработано под связку «Linux-роутер + шейперы из /etc/systemd/scripts»
+		(wan0 + brlan0 с двумя ingress-плечами, fastvpn-туннели), но работает
+		на любой системе с tc из iproute2. Группировка устройств задаётся
+		секцией [groups] (glob-паттерны), для агрегата пака выбирается uplink.
+	</longdescription>
+	<upstream>
+		<remote-id type="github">KosmiK2001/shaping-view</remote-id>
+	</upstream>
+</pkgmetadata>

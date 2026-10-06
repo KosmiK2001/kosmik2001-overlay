@@ -14,9 +14,10 @@ LICENSE="MIT"
 SLOT="0"
 KEYWORDS="**"
 
-IUSE="+upx debug sanitize"
+IUSE="+upx debug sanitize +nls"
 
-DEPEND="x11-libs/gtk+:3"
+DEPEND="x11-libs/gtk+:3
+	nls? ( sys-devel/gettext )"
 RDEPEND="${DEPEND}
 	sys-apps/iproute2"
 
@@ -28,7 +29,7 @@ src_compile() {
 	local targets=(release)
 	use debug && targets+=(debug)
 	use sanitize && targets+=(sanitize)
-	emake CC="$(tc-getCC)" "${targets[@]}"
+	emake CC="$(tc-getCC)" LOCALEDIR="${EPREFIX}/usr/share/locale" "${targets[@]}" $(usev nls locale)
 }
 
 src_install() {
@@ -36,4 +37,14 @@ src_install() {
 	dodoc README.md
 	docinto examples
 	dodoc doc/class-names.example.conf
+	if use nls; then
+		local l mo
+		for mo in build/locale/*/LC_MESSAGES/shaping-view.mo; do
+			[[ -e ${mo} ]] || continue
+			l=${mo#build/locale/}
+			l=${l%%/*}
+			insinto /usr/share/locale/${l}/LC_MESSAGES
+			doins ${mo}
+		done
+	fi
 }

@@ -13,7 +13,7 @@ LICENSE="GPL-3+"
 SLOT="0"
 KEYWORDS="~amd64 ~x86"
 
-IUSE="+x11 +glx +egl wayland layer_shell systemd test +plugins"
+IUSE="+x11 +glx +egl wayland layer_shell systemd test"
 
 RDEPEND="x11-libs/gtk+:3
 	x11-libs/cairo
@@ -37,8 +37,10 @@ RDEPEND="x11-libs/gtk+:3
 	)
 	egl? ( media-libs/libglvnd )
 	layer_shell? ( gui-libs/gtk-layer-shell )
-	systemd? ( sys-apps/systemd )
-	plugins? ( =x11-plugins/cairo-dock-plugins-${PV} )"
+	systemd? ( sys-apps/systemd )"
+
+RESTRICT="test"
+S="${WORKDIR}/cairo-dock-core-${PV}"
 
 DEPEND="
 	${RDEPEND}
@@ -47,9 +49,6 @@ DEPEND="
 	sys-devel/gettext
 	virtual/pkgconfig
 "
-
-RESTRICT="test"
-S="${WORKDIR}/cairo-dock-core-${PV}"
 
 src_install() {
 	cmake_src_install

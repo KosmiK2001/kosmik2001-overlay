@@ -17,7 +17,7 @@ KEYWORDS="**"
 # Обязательные deps core (из CMakeLists.txt): glib-2.0>=2.40, gthread-2.0,
 # cairo, librsvg-2.0, libxml-2.0, gl, glu, libcurl, libarchive, gtk+-3.0>=3.22.
 # Плагины грузятся dlopen-ом и ставят RDEPEND на core + свои libs.
-IUSE="+x11 +glx +egl wayland layer_shell systemd test +plugins"
+IUSE="+x11 +glx +egl wayland layer_shell systemd test"
 
 # CMake тихо пропускает отсутствующий pkg. Флаги ниже только детерминируют
 # enable-* варианты; реальный сбор того, что upstream считает "unstable"
@@ -45,8 +45,7 @@ RDEPEND="x11-libs/gtk+:3
 	)
 	egl? ( media-libs/libglvnd )
 	layer_shell? ( gui-libs/gtk-layer-shell )
-	systemd? ( sys-apps/systemd )
-	plugins? ( =x11-plugins/cairo-dock-plugins-${PV} )"
+	systemd? ( sys-apps/systemd )"
 
 DEPEND="
 	${RDEPEND}

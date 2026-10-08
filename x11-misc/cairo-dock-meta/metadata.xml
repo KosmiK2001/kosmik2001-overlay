@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE pkgmetadata SYSTEM "https://www.gentoo.org/dtd/metadata.dtd">
+<pkgmetadata>
+	<maintainer type="person">
+		<email>kosmik2001@gmail.com</email>
+		<name>kosmik2001</name>
+	</maintainer>
+	<longdescription lang="en">
+		Meta package pulling in both halves of Cairo-Dock:
+		x11-misc/cairo-dock (the dock and the gldi library) and
+		x11-plugins/cairo-dock-plugins (applets, rendering modes,
+		indicators). Install this if you want the complete dock with
+		all plugins in one shot.
+	</longdescription>
+	<longdescription lang="ru">
+		Мета-пакет, ставящий обе половины Cairo-Dock: x11-misc/cairo-dock
+		(сам док и библиотека gldi) и x11-plugins/cairo-dock-plugins
+		(апплеты, режимы отрисовки, индикаторы). Ставьте его, если нужен
+		полный док со всеми плагинами одной командой.
+	</longdescription>
+</pkgmetadata>

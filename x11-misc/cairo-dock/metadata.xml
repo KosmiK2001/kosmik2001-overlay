@@ -40,7 +40,6 @@
 		<flag name="wayland">Build the Wayland back-end and Wayfire IPC support</flag>
 		<flag name="layer_shell">Use gtk-layer-shell to anchor the dock on Wayland</flag>
 		<flag name="systemd">Install the systemd user service unit</flag>
-		<flag name="plugins">Pull in x11-plugins/cairo-dock-plugins (applets, rendering modes, indicators)</flag>
 	</use>
 	<upstream>
 		<remote-id type="github">Cairo-Dock/cairo-dock-core</remote-id>

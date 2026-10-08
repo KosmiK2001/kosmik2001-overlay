@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE pkgmetadata SYSTEM "https://www.gentoo.org/dtd/metadata.dtd">
+<pkgmetadata>
+	<maintainer type="person">
+		<email>kosmik2001@gmail.com</email>
+		<name>kosmik2001</name>
+	</maintainer>
+	<longdescription lang="en">
+		Cairo-Dock is a pretty, light and convenient interface to your
+		desktop, able to replace your system panel. It features multi-docks,
+		taskbar, launchers and a lot of useful applets. Applets can be
+		detached from the dock to act as desktop widgets, and it can use
+		hardware acceleration (GLX or EGL) to stay fast and low on CPU.
+
+		This package is the core: the dock itself and the gldi library
+		(libgldi) that plugins link against. Install x11-plugins/cairo-dock-plugins
+		for the applets, rendering modes and indicators.
+
+		Both X11 (GLX) and Wayland (EGL + wlr-layer-shell) back-ends are
+		supported; USE flags select which are built.
+	</longdescription>
+	<longdescription lang="ru">
+		Cairo-Dock — лёгкая и удобная панель-док для рабочего стола, которой
+		можно заменить системную панель. Поддерживает несколько доков,
+		панель задач, лаунчеры и множество апплетов. Апплеты можно отцеплять
+		от дока и держать на столе как виджеты. Есть аппаратное ускорение
+		(GLX или EGL), поэтому док остаётся быстрым и нетребовательным к CPU.
+
+		Это ядро: сам док и библиотека gldi (libgldi), с которой линкуются
+		плагины. За апплетами, режимами отрисовки и индикаторами —
+		x11-plugins/cairo-dock-plugins.
+
+		Поддерживаются оба бэкенда: X11 (GLX) и Wayland (EGL +
+		wlr-layer-shell); какие собирать — задаётся USE-флагами.
+	</longdescription>
+	<use>
+		<flag name="x11">Build the X11 (GLX) back-end and X11 extensions support</flag>
+		<flag name="glx">Use GLX for hardware acceleration under X11</flag>
+		<flag name="egl">Use EGL for hardware acceleration (mainly Wayland)</flag>
+		<flag name="wayland">Build the Wayland back-end and Wayfire IPC support</flag>
+		<flag name="layer_shell">Use gtk-layer-shell to anchor the dock on Wayland</flag>
+		<flag name="systemd">Install the systemd user service unit</flag>
+	</use>
+	<upstream>
+		<remote-id type="github">Cairo-Dock/cairo-dock-core</remote-id>
+	</upstream>
+</pkgmetadata>

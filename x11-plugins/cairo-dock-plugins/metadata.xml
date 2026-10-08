@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE pkgmetadata SYSTEM "https://www.gentoo.org/dtd/metadata.dtd">
+<pkgmetadata>
+	<maintainer type="person">
+		<email>kosmik2001@gmail.com</email>
+		<name>kosmik2001</name>
+	</maintainer>
+	<longdescription lang="en">
+		Official plugins for Cairo-Dock: applets, rendering modes, indicators
+		and effects. Plugins are shared objects loaded by the dock at runtime
+		through dlopen(), so this package pulls in the libraries each built
+		plugin actually links against.
+
+		The rendering modes (dock-rendering, desklet-rendering,
+		dialog-rendering), launchers, clock, calendar, switcher, systray,
+		System-Monitor, dustbin and the folder/stack applets are always
+		built. Optional applets are controlled by USE flags; the defaults
+		match a typical desktop (indicators, AlsaMixer, PowerManager,
+		terminal, weather, Xgamma, ...).
+	</longdescription>
+	<longdescription lang="ru">
+		Официальные плагины для Cairo-Dock: апплеты, режимы отрисовки,
+		индикаторы и эффекты. Плагины — это разделяемые объекты, которые док
+		загружает на лету через dlopen(), поэтому пакет тянет библиотеки,
+		к которым реально линкуется каждый собранный плагин.
+
+		Режимы отрисовки (dock-rendering, desklet-rendering,
+		dialog-rendering), лаунчеры, часы, календарь, переключатель окон,
+		systray, System-Monitor, корзина и апплеты папок/стека собираются
+		всегда. Остальные апплеты управляются USE-флагами; значения по
+		умолчанию рассчитаны на обычный рабочий стол (индикаторы,
+		AlsaMixer, PowerManager, терминал, погода, Xgamma и т.д.).
+	</longdescription>
+	<use>
+		<flag name="indicator3">Build the ayatana indicator stack (Messaging-Menu, Status-Notifier, Global-Menu, Indicator-Generic, Sound-Menu)</flag>
+		<flag name="alsa">Build AlsaMixer and Sound-Effects applets</flag>
+		<flag name="pulse">Build the Impulse applet (PulseAudio visualiser)</flag>
+		<flag name="fftw">Add FFTW-based rendering to the Impulse applet</flag>
+		<flag name="upower">Add UPower battery support to PowerManager</flag>
+		<flag name="ical">Add iCal support to the clock applet</flag>
+		<flag name="keyboard">Build the keyboard-indicator applet (libxklavier)</flag>
+		<flag name="terminal">Build the terminal applet (VTE)</flag>
+		<flag name="weather">Build the weather applet (json-c)</flag>
+		<flag name="xgamma">Build the Xgamma applet</flag>
+		<flag name="exif">Add EXIF-based image rotation to the slider applet</flag>
+		<flag name="xrandr">Add screen-resolution abilities to ShowDesktop (Xrandr)</flag>
+		<flag name="python">Install the D-Bus Python3 interface for third-party applets</flag>
+		<flag name="mail">Build the mail applet (libetpan)</flag>
+		<flag name="gmenu">Build the GMenu applet (gnome-menus)</flag>
+		<flag name="sensors">Add fan/temperature monitoring to System-Monitor (lm-sensors)</flag>
+	</use>
+	<upstream>
+		<remote-id type="github">Cairo-Dock/cairo-dock-plug-ins</remote-id>
+	</upstream>
+</pkgmetadata>

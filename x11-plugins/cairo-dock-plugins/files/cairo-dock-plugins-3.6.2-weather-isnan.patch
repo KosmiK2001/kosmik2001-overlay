@@ -1,0 +1,32 @@
+# Fix implicit declaration of isnan() and missing NAN on modern toolchains
+# (GCC 14+/glibc 2.36+): upstream weather applet forgot #include <math.h>
+--- a/weather/src/applet-read-data.c
++++ b/weather/src/applet-read-data.c
+@@ -24,6 +24,7 @@
+ 
+ #include <json.h>
+ #include <glib/gstdio.h>
++#include <math.h>
+ 
+ #include "applet-struct.h"
+ #include "applet-load-icons.h"
+--- a/weather/src/applet-load-icons.c
++++ b/weather/src/applet-load-icons.c
+@@ -18,6 +18,7 @@
+ */
+ 
+ #include <string.h>
++#include <math.h>
+ 
+ #include "applet-struct.h"
+ #include "applet-read-data.h"
+--- a/weather/src/applet-config.c
++++ b/weather/src/applet-config.c
+@@ -19,6 +19,7 @@
+ 
+ #include <string.h>
+ #include <glib/gstdio.h>
++#include <math.h>
+ 
+ #include "applet-struct.h"
+ #include "applet-read-data.h"

@@ -13,7 +13,7 @@ LICENSE="GPL-3+"
 SLOT="0"
 KEYWORDS="~amd64 ~x86"
 
-IUSE="+x11 +glx +egl wayland layer_shell systemd test"
+IUSE="+x11 +glx +egl wayland layer_shell systemd test +plugins"
 
 RDEPEND="x11-libs/gtk+:3
 	x11-libs/cairo
@@ -37,7 +37,8 @@ RDEPEND="x11-libs/gtk+:3
 	)
 	egl? ( media-libs/libglvnd )
 	layer_shell? ( gui-libs/gtk-layer-shell )
-	systemd? ( sys-apps/systemd )"
+	systemd? ( sys-apps/systemd )
+	plugins? ( =x11-plugins/cairo-dock-plugins-${PV} )"
 
 DEPEND="
 	${RDEPEND}

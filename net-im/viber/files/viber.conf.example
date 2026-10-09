@@ -1,0 +1,25 @@
+# /etc/viber/viber.conf — настройки запуска net-im/viber (обёртка /usr/bin/viber).
+# Файл — обычный /bin/sh snippet, вызывается через '.' перед exec Viber.
+# Всё по умолчанию ВЫКЛЮЧЕНО: ничего не задаано — Viber стартует как upstream.
+
+# Принудительно X11 (xcb) вместо Wayland. Лечит чёрное/прозрачное окно
+# Viber под Wayland на проприетарных драйверах nvidia
+# (https://github.com/flathub/com.viber.Viber/issues/32).
+# Для MATE/X11 не нужно.
+#VIBER_FORCE_XCB=1
+
+# Бэкенд Qt Quick RHI: opengl | vulkan. Чинит артефакты отрисовки на
+# некоторых GPU/драйверах. По умолчанию Qt6 сам выбирает (на nvidia — vulkan).
+#VIBER_QSG_BACKEND=opengl
+
+# Полностью программный рендер Qt Quick. Крайняя мера против чёрного окна:
+# работает всегда, но без vsync/ускорения.
+#VIBER_SOFTWARE_RENDER=1
+
+# Отсев COLRv1-эмодзи через fontconfig (Viber's Qt 6.10 не умеет COLRv1,
+# смайлы превращаются в квадраты). Требует media-fonts/noto-emoji с
+# CBDT-шрифтом (2D-версия, =media-fonts/noto-emoji-20250912 без -r1).
+#VIBER_EMOJI_FIX=1
+
+# Свой доп. флаг Qt/Chromium для Viber (например отладка):
+#VIBER_EXTRA_ARGS="--disable-gpu"

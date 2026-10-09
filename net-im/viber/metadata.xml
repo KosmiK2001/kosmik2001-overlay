@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE pkgmetadata SYSTEM "https://www.gentoo.org/dtd/metadata.dtd">
+<pkgmetadata>
+	<maintainer type="person">
+		<email>kosmik2001@gmail.com</email>
+		<name>KosmiK2001</name>
+	</maintainer>
+	<longdescription>
+		Viber для Desktop — проприетарный мессенджер (Qt 6/QML, QtWebEngine),
+		устанавливается из официального .deb. Бандлит собственный Qt в
+		/opt/viber/lib, системный Qt не требуется.
+	</longdescription>
+	<use>
+		<flag name="tray-toggle">Левый клик по трей-иконке прячет окно Viber в трей, когда оно видно (повторный клик снова поднимает). Без флага любой клик только поднимает окно.</flag>
+		<flag name="notif-ignore">Не реагировать на клик по уведомлениям в системном трее. Лечит баг: mate-notification-daemon рассылает ActionInvoked всем клиентам, и Viber поднимал своё окно при клике по ЛЮБОМУ чужому уведомлению. Сайд-эффект: клик по собственному уведомлению Viber тоже перестанет открывать чат (окно поднимается кликом по трей-иконке).</flag>
+	</use>
+</pkgmetadata>

@@ -3,7 +3,7 @@
 
 Viber для Linux хранит свои QML-файлы вшитыми в бинарник обычным (не
 скомпилированным) текстом, а Qt6 moc-строки фиксируются по смещениям,
-поже любой патч здесь — замена СТРОГО той же длины. QML-блоки в ресурсе
+поэтому любой патч здесь — замена СТРОГО той же длины. QML-блоки в ресурсе
 имеют 4-байтный BE-префикс длины: изменение размера сломает загрузку.
 Скрипт проверяет длину и падает при расхождении.
 
@@ -26,10 +26,15 @@ Viber для Linux хранит свои QML-файлы вшитыми в бин
   Подписка ломается переименованием слота в несуществующий:
   QDBusConnection::connect() просто вернёт false (см. 0x911e6b:
   lea rcx, "1onActionInvoked(quint32, QString)" -> call connect).
-  САЙД-ЭФФЕКТ: клик по СОБСТВЕННОМУ уведомлению Viber тоже перестанет
-  открывать чат — окно поднимается кликом по трей-иконке (--tray-toggle).
+  САЙД-ЭФФЕКТ: клик по СОБСТВЕННОМУ уведомлению Viber перестанет открывать
+  чат — окно поднимается кликом по трей-иконке (--tray-toggle).
 
-Использование: viber-binary-patch.py [--tray-toggle] [--notif-ignore] <файл>
+--soft
+  Паттерн не найден -> предупреждение и код возврата 2 вместо FATAL.
+  Для live-ebuild (viber-9999): апстрим может переписать QML/moc, и сборка
+  нового релиза не должна вставать из-за патча.
+
+Использование: viber-binary-patch.py [--tray-toggle] [--notif-ignore] [--soft] <файл>
 """
 import sys
 
@@ -65,24 +70,42 @@ def main(argv):
     data = open(path, "rb").read()
     orig = len(data)
 
+    # --soft: не умирать при отсутствии паттерна, а предупредить. Нужен
+    # live-ebuild'у (viber-9999): апстрим может переписать QML/moc-строки,
+    # и сборка каждого нового релиза не должна вставать из-за патча.
+    soft = "--soft" in flags
+    rc = 0
+
     if "--tray-toggle" in flags:
         new = tray_new()
         assert len(new) == len(TRAY_OLD), (len(new), len(TRAY_OLD))
         n = data.count(TRAY_OLD)
         if n != 1:
-            sys.exit("FATAL: tray pattern occurs %d times (expected 1) — "
-                     "upstream изменил QML, патч нужно переписать" % n)
-        data = data.replace(TRAY_OLD, new)
-        print("patched: tray toggle (--tray-toggle)")
+            msg = ("tray pattern occurs %d times (expected 1) — upstream "
+                   "изменил QML, патч нужно переписать" % n)
+            if soft:
+                print("WARN: " + msg)
+                rc = 2
+            else:
+                sys.exit("FATAL: " + msg)
+        else:
+            data = data.replace(TRAY_OLD, new)
+            print("patched: tray toggle (--tray-toggle)")
 
     if "--notif-ignore" in flags:
         assert len(NOTIF_NEW) == len(NOTIF_OLD)
         n = data.count(NOTIF_OLD)
         if n != 1:
-            sys.exit("FATAL: notif pattern occurs %d times (expected 1) — "
-                     "upstream изменил moc-строки, патч нужно переписать" % n)
-        data = data.replace(NOTIF_OLD, NOTIF_NEW)
-        print("patched: notification click ignored (--notif-ignore)")
+            msg = ("notif pattern occurs %d times (expected 1) — upstream "
+                   "изменил moc-строки, патч нужно переписать" % n)
+            if soft:
+                print("WARN: " + msg)
+                rc = 2
+            else:
+                sys.exit("FATAL: " + msg)
+        else:
+            data = data.replace(NOTIF_OLD, NOTIF_NEW)
+            print("patched: notification click ignored (--notif-ignore)")
 
     if len(data) != orig:
         sys.exit("FATAL: size changed %d -> %d" % (orig, len(data)))

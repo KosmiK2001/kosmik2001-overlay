@@ -11,7 +11,10 @@ Viber для Linux хранит свои QML-файлы вшитыми в бин
   Labs.SystemTrayIcon.onActivated всегда вызывал ViberApp.requestActivate(),
   поэтому повторный левый клик по трей-иконке не прятал окно обратно в трей.
   Становится toggle: Trigger(3)/DoubleClick(2) -> если окно видимо,
-  скрыть (ViberApp.window.visible = false), иначе показать/активировать.
+  скрыть (ViberApp.window.hide() — слот QWindow, именно hide(), а не
+  visible=false: так делает whatsapp-desktop в app/main.js), иначе
+  показать/активировать. Нуль-гард w&&: если window вдруг nullptr —
+  падаем в requestActivate (старое поведение), а не в TypeError.
   Context(1)/MiddleClick(4) игнорируются (для контекста есть меню).
   ViberApp.window — Q_PROPERTY(QWindow*), в самом Viber он уже
   используется как `ViberApp.window.height`, так что обращение валидно.
@@ -44,7 +47,7 @@ TRAY_OLD = (b"    onActivated: function(reason) {\n"
             b"    }\n")
 
 _TRAY_NEW_CORE = (b"    onActivated: function(r) {\n"
-                  b"        if (r===2||r===3) { if (ViberApp.window.visible) ViberApp.window.visible = false; else ViberApp.requestActivate() }\n"
+                  b"        if (r===2||r===3) { var w=ViberApp.window; w&&w.visible?w.hide():ViberApp.requestActivate() }\n"
                   b"    }\n")
 
 NOTIF_OLD = b"1onActionInvoked(quint32, QString)"

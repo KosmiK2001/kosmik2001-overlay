@@ -43,5 +43,12 @@ if [ -n "$VIBER_EMOJI_FIX" ] && [ -r /usr/share/viber/viber-emoji-fontconf.conf 
 	export FONTCONFIG_FILE
 fi
 
+# Отладка трей-патча: VIBER_TRAY_DEBUG=1 отключает QML-диск-кэш Qt6,
+# чтобы изменённый in-source QML гарантированно перекомпилировался.
+if [ -n "$VIBER_TRAY_DEBUG" ]; then
+	QML_DISABLE_DISK_CACHE=1
+	export QML_DISABLE_DISK_CACHE
+fi
+
 # shellcheck disable=SC2086
 exec /opt/viber/Viber $VIBER_EXTRA_ARGS "$@"

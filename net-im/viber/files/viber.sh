@@ -43,9 +43,12 @@ if [ -n "$VIBER_EMOJI_FIX" ] && [ -r /usr/share/viber/viber-emoji-fontconf.conf 
 	export FONTCONFIG_FILE
 fi
 
-# Отладка трей-патча: VIBER_TRAY_DEBUG=1 отключает QML-диск-кэш Qt6,
-# чтобы изменённый in-source QML гарантированно перекомпилировался.
-if [ -n "$VIBER_TRAY_DEBUG" ]; then
+# Трей-патч (USE=tray-toggle) правит QML-текст, но Viber носит рядом
+# AOT-скомпилированные единицы того же QML (QmlCacheGeneratedCode в бинаре),
+# и Qt грузит ИХ, игнорируя текст. QML_DISABLE_DISK_CACHE=1 отключает
+# предкомпилированные единицы — цена ~1.2 с на старт. Ebuild кладёт маркер
+# /opt/viber/.viber-tray-patched только когда патч реально применён.
+if [ -r /opt/viber/.viber-tray-patched ] || [ -n "$VIBER_TRAY_DEBUG" ]; then
 	QML_DISABLE_DISK_CACHE=1
 	export QML_DISABLE_DISK_CACHE
 fi

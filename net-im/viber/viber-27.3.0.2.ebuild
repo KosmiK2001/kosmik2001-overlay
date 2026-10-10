@@ -125,6 +125,10 @@ src_install() {
 	# doins теряет бит +x
 	fperms 0755 /opt/viber/Viber /opt/viber/libexec/QtWebEngineProcess
 
+	# маркер для обёртки: включаем QML_DISABLE_DISK_CACHE только когда
+	# трей-патч реально в бинаре (иначе Qt грузит AOT-версию QML и патч мёртв)
+	use tray-toggle && touch "${ED}"/opt/viber/.viber-tray-patched
+
 	# обёртка запуска: /etc/viber/viber.conf + qtpaths в PATH
 	newbin "${FILESDIR}/viber.sh" viber
 	dosym viber /usr/bin/Viber

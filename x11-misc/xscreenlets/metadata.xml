@@ -44,6 +44,18 @@
 		отдельно; темы из /usr/share/screenlets используются в последнюю
 		очередь, если для апплета не нашлось своей темы.
 	</longdescription>
+	<use>
+		<flag name="upx">Compress the installed daemon and plugins with UPX. Gains disk space at the cost of startup-time unpacking; mutually exclusive with any debug flag (debug, memdebug, sanitize), which disables it automatically.</flag>
+		<flag name="debug">Instrumentation build: enables the built-in SIGSEGV crash catcher that logs a backtrace, plus verbose per-draw/per-tick logging activated by the --debug flag. Not compatible with UPX.</flag>
+		<flag name="memdebug">Instrumentation build: enables the XS_MEM_DEBUG memory diagnostics (SIGUSR1 triggers malloc_trim(0), a periodic RSS/heap poll sends MEM: lines to the log; interval via XSCREENLETS_MEM_POLL). Not compatible with UPX.</flag>
+		<flag name="sanitize">Instrumentation build with AddressSanitizer and UndefinedBehaviorSanitizer plus the crash catcher and memory debug hooks (required -O0 -g3). Catches heap corruption and UB; slows the daemon significantly. Not compatible with UPX.</flag>
+	</use>
+	<use lang="ru">
+		<flag name="upx">Упаковывает установленный демон и плагины в UPX. Экономит место на диске ценой распаковки при старте; несовместим с любым отладочным флагом (debug, memdebug, sanitize) — тот автоматически его отключает.</flag>
+		<flag name="debug">Отладочная сборка: встроенный ловец падений SIGSEGV с выводом backtrace и подробные draw/tick-логи, включаемые флагом --debug. Несовместим с UPX.</flag>
+		<flag name="memdebug">Отладочная сборка: диагностика памяти XS_MEM_DEBUG (SIGUSR1 вызывает malloc_trim(0), периодический опрос пишет в лог строки MEM: со статистикой кучи; интервал задаётся XSCREENLETS_MEM_POLL). Несовместим с UPX.</flag>
+		<flag name="sanitize">Отладочная сборка с AddressSanitizer и UndefinedBehaviorSanitizer плюс ловец падений и перехватчики памяти (обязательные -O0 -g3). Ловит порчу кучи и UB, но заметно замедляет демон. Несовместим с UPX.</flag>
+	</use>
 	<upstream>
 		<remote-id type="github">KosmiK2001/xscreenlets</remote-id>
 	</upstream>

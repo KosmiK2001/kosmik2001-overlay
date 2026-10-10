@@ -178,6 +178,9 @@ src_install() {
 
 	# обёртка запуска: /etc/viber/viber.conf + qtpaths в PATH
 	newbin "${FILESDIR}/viber.sh" viber
+	# помощник старта свёрнутым в трей (VIBER_START_HIDDEN)
+	exeinto /usr/libexec/viber
+	doexe "${FILESDIR}/viber-start-hidden.sh"
 	dosym viber /usr/bin/Viber
 
 	insinto /etc/viber
@@ -218,6 +221,8 @@ pkg_postinst() {
 		elog "  VIBER_QSG_BACKEND=...  — opengl|vulkan для Qt Quick RHI"
 		elog "  VIBER_SOFTWARE_RENDER=1 — программный рендер Qt Quick (крайняя мера)"
 		elog "  VIBER_EMOJI_FIX=1      — отсев COLRv1-эмодзи через fontconfig"
+		elog "  VIBER_START_HIDDEN=1   — старт свёрнутым в трей (требует USE=tray-toggle)"
+		elog "  VIBER_START_HIDDEN=1   — старт свёрнутым в трей (требует USE=tray-toggle)"
 		elog "USE-флаги по умолчанию: tray-toggle (клик по трей-иконке прячет окно),"
 		elog "notif-ignore (Viber не реагирует на клик по уведомлениям в системном трее)."
 		use tray-toggle || use notif-ignore || \

@@ -21,5 +21,13 @@
 # CBDT-шрифтом (2D-версия, =media-fonts/noto-emoji-20250912 без -r1).
 #VIBER_EMOJI_FIX=1
 
+# Старт свёрнутым в трей. Требует USE=tray-toggle (механизм тот же: клик по
+# трей-иконке). Помощник ждёт появления иконки на D-Bus и шлёт Activate.
+#VIBER_START_HIDDEN=1
+#  тонкая настройка: сколько секунд ждать иконку (default 40) и пауза перед
+#  вызовом, чтобы окно успело отобразиться (default 2):
+#VIBER_START_HIDDEN_TIMEOUT=40
+#VIBER_START_HIDDEN_DELAY=2
+
 # Свой доп. флаг Qt/Chromium для Viber (например отладка):
 #VIBER_EXTRA_ARGS="--disable-gpu"

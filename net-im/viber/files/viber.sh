@@ -53,5 +53,22 @@ if [ -r /opt/viber/.viber-tray-patched ] || [ -n "$VIBER_TRAY_DEBUG" ]; then
 	export QML_DISABLE_DISK_CACHE
 fi
 
+# Старт свёрнутым в трей: сам Viber эту опцию не поддерживает (ключи
+# StartMinimized/StartInBackground/AutoStart в бинаре — только строки
+# таблицы, их никто не читает; в UI опция неактивна). Прячем окном через
+# наш же трей-toggle: помощник ждёт регистрации трей-иконки на D-Bus и
+# шлёт org.kde.StatusNotifierItem.Activate (то же, что клик по иконке).
+# Работает только с пропатченным QML -> требуем маркер.
+if [ -n "$VIBER_START_HIDDEN" ] && [ -r /opt/viber/.viber-tray-patched ]; then
+	HELPER=/usr/libexec/viber/viber-start-hidden
+	if [ -x "$HELPER" ]; then
+		"$HELPER" $$ &
+	else
+		echo "viber: VIBER_START_HIDDEN игнорируется: нет $HELPER" >&2
+	fi
+elif [ -n "$VIBER_START_HIDDEN" ]; then
+	echo "viber: VIBER_START_HIDDEN игнорируется: не применён USE=tray-toggle" >&2
+fi
+
 # shellcheck disable=SC2086
 exec /opt/viber/Viber $VIBER_EXTRA_ARGS "$@"

@@ -198,8 +198,14 @@ src_install() {
 	dosym ../icons/hicolor/96x96/apps/viber.png /usr/share/pixmaps/viber.png
 
 	domenu usr/share/applications/viber.desktop
-	# алиас, который создаёт postinst официальной упаковки
-	dosym viber.desktop /usr/share/applications/com.viber.Viber.desktop
+	# алиас com.viber.Viber (upstream-deb делает его симлинком — из-за этого
+	# меню MATE показывает ДВА Viber). Реальный файл с NoDisplay=true:
+	# x-scheme-handler/viber по-прежнему резолвится, в меню не светится.
+	sed -e '/^Categories=/d' -e '$a NoDisplay=true' \
+		usr/share/applications/viber.desktop \
+		> "${T}"/com.viber.Viber.desktop || die "sed alias desktop"
+	insinto /usr/share/applications
+	doins "${T}"/com.viber.Viber.desktop
 
 	# Chromium/QtWebEngine нужен mprotect(RWX) для JIT
 	pax-mark m "${ED}"/opt/viber/Viber

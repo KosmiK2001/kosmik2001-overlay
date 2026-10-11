@@ -1,0 +1,49 @@
+--- a/opt/whatsapp-desktop/resources/app/js/views/settings.js
++++ b/opt/whatsapp-desktop/resources/app/js/views/settings.js
+@@ -20,8 +20,7 @@
+         });
+ 
+         $("#useProxy").on("change", () => {
+-            $("#httpProxy").prop("disabled", !($("#useProxy").is(":checked")));
+-            $("#httpsProxy").prop("disabled", !($("#useProxy").is(":checked")));
++            $("#proxyScheme,#proxyHost,#proxyPort").prop("disabled", !($("#useProxy").is(":checked")));
+         });
+     },
+ 
+@@ -54,10 +53,18 @@
+             $("#thumb-size").val(config.get("thumbSize"));
+         }
+         $("#useProxy").attr("checked", config.get("useProxy"));
+-        $("#httpProxy").val(config.get("httpProxy"));
+-        $("#httpsProxy").val(config.get("httpsProxy"));
+-        $("#httpProxy").prop("disabled", !($("#useProxy").is(":checked")));
+-        $("#httpsProxy").prop("disabled", !($("#useProxy").is(":checked")));
++        var httpProxy = config.get("httpProxy") || "";
++        var pp = httpProxy.lastIndexOf(":");
++        var proxyScheme = (config.get("httpsProxy")||"").indexOf("socks") >= 0 ? "socks5" : "http";
++        $("#proxyScheme").val(proxyScheme);
++        if (pp >= 0) {
++            $("#proxyHost").val(httpProxy.slice(0, pp));
++            $("#proxyPort").val(httpProxy.slice(pp+1));
++        } else {
++            $("#proxyHost").val(httpProxy);
++            $("#proxyPort").val(config.get("proxyPort") || "");
++        }
++        $("#proxyScheme,#proxyHost,#proxyPort").prop("disabled", !($("#useProxy").is(":checked")));
+ 
+         $("#customcss_enable").attr("checked", config.get("customcss") != undefined);
+         if ($("#customcss_enable").is(":checked")) {
+@@ -105,8 +112,11 @@
+         config.set("trayicon", $("#trayicon").is(":checked"));
+         if ($("#useProxy").is(":checked")) {
+             config.set("useProxy", $("#useProxy").is(":checked"));
+-            config.set("httpProxy", $("#httpProxy").val());
+-            config.set("httpsProxy", $("#httpsProxy").val());
++            var proxyScheme = $("#proxyScheme").val();
++            var proxyHost = $("#proxyHost").val();
++            var proxyPort = $("#proxyPort").val();
++            config.set("httpProxy", proxyHost + ":" + proxyPort);
++            config.set("httpsProxy", (proxyScheme=="socks5"?"socks5://":"http://") + proxyHost + ":" + proxyPort);
+         } else {
+             config.unSet("useProxy");
+             config.unSet("httpProxy");

@@ -1,0 +1,28 @@
+--- a/opt/whatsapp-desktop/resources/app/html/settings.html
++++ b/opt/whatsapp-desktop/resources/app/html/settings.html
+@@ -85,13 +85,20 @@
+       </p>
+ 
+       <div class="row">
+-        <div class="input-field col s6">
+-          <input id="httpProxy" type="text" class="validate">
+-          <label id="httpProxy_label" for="httpProxy" data-error="This field is required if you are using a proxy"><script> document.write(_("Http Proxy")); </script></label>
++        <div class="input-field col s2">
++          <select id="proxyScheme" style="display: inline;">
++            <option value="http">http</option>
++            <option value="socks5">socks5</option>
++          </select>
++          <label id="proxyScheme_label" for="proxyScheme"><script> document.write(_("Proxy scheme")); </script></label>
+         </div>
+         <div class="input-field col s6">
+-          <input id="httpsProxy" type="text" placeholder="Leave blank to use the same" class="validate">
+-          <label id="httpsProxy_label" for="httpsProxy" ><script> document.write(_("Https Proxy")); </script></label>
++          <input id="proxyHost" type="text" class="validate">
++          <label id="proxyHost_label" for="proxyHost" data-error="This field is required if you are using a proxy"><script> document.write(_("Proxy IP")); </script></label>
++        </div>
++        <div class="input-field col s4">
++          <input id="proxyPort" type="text" class="validate">
++          <label id="proxyPort_label" for="proxyPort" data-error="This field is required if you are using a proxy"><script> document.write(_("Proxy Port")); </script></label>
+         </div>
+       </div>
+ 

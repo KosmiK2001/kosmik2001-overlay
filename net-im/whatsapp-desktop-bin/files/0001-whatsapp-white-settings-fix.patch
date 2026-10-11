@@ -1,0 +1,11 @@
+--- a/opt/whatsapp-desktop/resources/app/main.js
++++ b/opt/whatsapp-desktop/resources/app/main.js
+@@ -21,6 +21,8 @@
+     const NativeImage = electron.nativeImage
+     const BrowserWindow = electron.BrowserWindow
+     const globalShortcut = electron.globalShortcut
++    const remoteMain = require("@electron/remote/main")
++    remoteMain.initialize()
+ 
+     const isAlreadyLocked = app.requestSingleInstanceLock()
+     app.on('second-instance', (event, argv, workingDir) => {

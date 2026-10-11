@@ -1,0 +1,35 @@
+--- a/opt/whatsapp-desktop/resources/app/main.js
++++ b/opt/whatsapp-desktop/resources/app/main.js
+@@ -470,16 +470,24 @@
+             // https://github.com/electron/electron/blob/master/docs/api/tray.md
+             // See the Platform limitations section.
+             whatsApp.tray.on('clicked', () => {
+-                whatsApp.window.show()
+-                whatsApp.window.setAlwaysOnTop(true)
+-                whatsApp.window.focus()
+-                whatsApp.window.setAlwaysOnTop(false)
++                if (whatsApp.window.isVisible()) {
++                    whatsApp.window.hide()
++                } else {
++                    whatsApp.window.show()
++                    whatsApp.window.setAlwaysOnTop(true)
++                    whatsApp.window.focus()
++                    whatsApp.window.setAlwaysOnTop(false)
++                }
+             })
+             whatsApp.tray.on('click', () => {
+-                whatsApp.window.show()
+-                whatsApp.window.setAlwaysOnTop(true)
+-                whatsApp.window.focus()
+-                whatsApp.window.setAlwaysOnTop(false)
++                if (whatsApp.window.isVisible()) {
++                    whatsApp.window.hide()
++                } else {
++                    whatsApp.window.show()
++                    whatsApp.window.setAlwaysOnTop(true)
++                    whatsApp.window.focus()
++                    whatsApp.window.setAlwaysOnTop(false)
++                }
+             })
+ 
+             whatsApp.tray.setToolTip('WhatsApp Desktop')

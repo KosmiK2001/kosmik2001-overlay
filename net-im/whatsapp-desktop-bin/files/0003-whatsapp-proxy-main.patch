@@ -1,0 +1,38 @@
+--- a/opt/whatsapp-desktop/resources/app/main.js
++++ b/opt/whatsapp-desktop/resources/app/main.js
+@@ -264,8 +264,16 @@
+                 var httpProxy = config.get("httpProxy")
+                 var httpsProxy = config.get("httpsProxy") || httpProxy
+                 if(httpProxy) {
+-                    log.info("Proxy configured: " + "http="+ httpProxy +";https=" + httpsProxy)
+-                    session.setProxy("http="+ httpProxy +";https=" + httpsProxy, function(){})
++                    var proxyScheme = (httpsProxy && httpsProxy.indexOf("socks") >= 0) ? "socks5" : "http"
++                    var proxyRules = proxyScheme + "://" + httpProxy
++                    log.info("Proxy configured: " + proxyRules)
++                    session.setProxy({
++                        proxyRules: proxyRules
++                    }).then(function() {
++                        log.info("Proxy applied")
++                    }).catch(function(e) {
++                        log.error("Proxy error: " + e)
++                    })
+                 }
+                 else {
+                     log.info("No proxy")
+@@ -640,7 +648,15 @@
+                 var httpProxy = config.get("httpProxy")
+                 var httpsProxy = config.get("httpsProxy") || httpProxy
+                 if (httpProxy) {
+-                    session.setProxy("http="+ httpProxy +";https=" + httpsProxy, () => {})
++                    var proxyScheme = (httpsProxy && httpsProxy.indexOf("socks") >= 0) ? "socks5" : "http"
++                    var proxyRules = proxyScheme + "://" + httpProxy
++                    session.setProxy({
++                        proxyRules: proxyRules
++                    }).then(function() {
++                        log.info("Proxy applied")
++                    }).catch(function(e) {
++                        log.error("Proxy error: " + e)
++                    })
+                 }
+             }
+ 

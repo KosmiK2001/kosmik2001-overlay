@@ -106,13 +106,14 @@ src_install() {
 	domenu usr/share/applications/whatsapp.desktop
 
 	local DESTDIR="/opt/whatsapp-desktop"
-	# libappindicator is REQUIRED: MATE notification area here is SNI-only
-	# (_NET_SYSTEM_TRAY_S0 absent), so without it Electron falls back to
-	# GtkStatusIcon (XEmbed) and the icon would not appear at all.
-	# NOTE: on this SNI path Electron 17 does NOT expose the Activate method,
-	# so tray left-clicks never reach the app (upstream-commented limitation);
-	# the tray context menu (Show/Hide/Quit) is the working interaction.
-	dosym "../../usr/lib64/libayatana-appindicator3.so" "${DESTDIR}/libappindicator3.so"
+	# DO NOT create the libappindicator symlink. Electron 17 on the
+	# libappindicator/StatusNotifierItem D-Bus path does NOT implement the
+	# "Activate" method, so tray left-clicks never reach the app at all
+	# (verified live: gdbus Activate -> UnknownMethod). Without the symlink
+	# Electron falls back to GtkStatusIcon (XEmbed) — which MATE notification
+	# area supports (embedded icon verified live) — and there the left click is
+	# a real 'click' event. Our 0002 tray-toggle patch then works, and right
+	# click still opens the tray context menu.
 
 	pushd "opt/whatsapp-desktop" || die
 

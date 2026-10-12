@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE pkgmetadata SYSTEM "https://www.gentoo.org/dtd/metadata.dtd">
+<pkgmetadata>
+	<maintainer type="person">
+		<email>kosmik2001@localhost</email>
+		<name>kosmik2001</name>
+	</maintainer>
+	<upstream>
+		<homepage>https://max.ru/</homepage>
+		<remote-id type="unknown">max.desktop</remote-id>
+	</upstream>
+	<longdescription lang="en">
+MAX is a messenger client for Russia's MAX network. The Linux package is a
+proprietary Qt6/QtWebEngine binary distributed as .deb (download.max.ru).
+Almost all libraries are bundled under /usr/share/max/lib64; only the X11/GL
+system layer and glib are needed from the system.
+	</longdescription>
+	<longdescription lang="ru">
+Мессенджер MAX. Linux-пакет — проприетарный бинарник Qt6/QtWebEngine
+(распространяется как .deb с download.max.ru). Почти все библиотеки
+бандлятся в /usr/share/max/lib64; из системы нужен только X11/GL-слой и glib.
+Запуск рекомендуется через джейл (netns + DNS-allowlist + маски ФС) из-за
+недоверенного характера приложения.
+	</longdescription>
+	<use>
+		<flag name="">Нет USE-флагов; пакет целиком prebuilt (RESTRICT=strip)</flag>
+	</use>
+</pkgmetadata>

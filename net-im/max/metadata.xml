@@ -33,5 +33,6 @@ DNS-allowlist только 77.88.8.8/8.8.8.8/9.9.9.9/1.1.1.1 (локальные
 	</longdescription>
 	<use>
 		<flag name="jail-net">Изолированный запуск мессенджера (netns + DNS-allowlist + маски ФС + hidepid). Требует passwordless sudo для /usr/libexec/max-jail/max_jail.sh. По умолчанию ВЫКЛ.</flag>
+		<flag name="qt_stack_build">Собрать Qt 6.11.0 из исходников (dev-qt/qtbase-6.11.0 + dev-qt/qtsvg-6.11.0 из этого оверлея; в ::gentoo только 6.11.2+) и подложить собранные libQt6* вместо вендорских в /opt/max. Сборка запускается в pkg_postinst (~7 мин qtbase + ~1 мин qtsvg на 32 ядрах, ccache; повторные emerge переиспользуют image). В систему пакеты не ставятся — системный Qt 6.11.2 не затрагивается. Откат: USE=-qt_stack_build emerge -1 net-im/max. По умолчанию ВЫКЛ.</flag>
 	</use>
 </pkgmetadata>

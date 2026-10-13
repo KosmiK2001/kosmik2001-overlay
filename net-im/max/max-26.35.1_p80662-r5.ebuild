@@ -40,7 +40,6 @@ BDEPEND="app-arch/dpkg"
 
 RDEPEND="
 	app-cdr/cdrtools
-	app-crypt/gnome-keyring
 	app-crypt/libsecret
 	app-arch/bzip2
 	app-arch/zstd
@@ -125,13 +124,6 @@ fi
 # инициализации GL/EGL (проверено и на хосте, и в джейле), с ним — живёт
 # и показывает окно.
 export QT_QUICK_BACKEND=software
-# Разблокировка login-keyring: приложение сохраняет ключ своей БД в коллекцию
-# "login" (секрет-сервис) — без неё каждый запуск кончается
-# "Database key is incorrect, remove database" и сбросом данных.
-KP="${XDG_CONFIG_HOME:-$HOME/.config}/max/keyring-pass"
-if [ -r "$KP" ]; then
-	printf '%s\n' "$(cat "$KP")" | gnome-keyring-daemon --unlock >/dev/null 2>&1 || true
-fi
 exec /opt/max/bin/max "$@"
 EOF
 	fperms 0755 /usr/bin/max

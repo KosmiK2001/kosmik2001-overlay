@@ -110,6 +110,16 @@ src_install() {
 if [ -f /etc/max/jail-net ]; then
 	exec sudo -n /usr/libexec/max-jail/max_jail.sh --x11 --dbus -- /opt/max/bin/max "$@"
 fi
+# Сессионная шина: если не задана (терминал/ssh без systemd-user-bus) — берём
+# стандартный путь; приложению нужен Secret Service (launch.cpp:102 — иначе
+# Fatal "libsecret unavailable").
+if [ -z "${DBUS_SESSION_BUS_ADDRESS:-}" ] && [ -S "/run/user/$(id -u)/bus" ]; then
+	export DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/$(id -u)/bus"
+fi
+# Программный рендер Qt Quick: без него приложение молча умирает на
+# инициализации GL/EGL (проверено и на хосте, и в джейле), с ним — живёт
+# и показывает окно.
+export QT_QUICK_BACKEND=software
 exec /opt/max/bin/max "$@"
 EOF
 	fperms 0755 /usr/bin/max

@@ -44,6 +44,7 @@ BDEPEND="app-arch/dpkg"
 RDEPEND="
 	app-arch/bzip2
 	app-arch/zstd
+	app-crypt/libsecret
 	app-misc/ca-certificates
 	dev-libs/double-conversion
 	dev-libs/expat
@@ -52,6 +53,7 @@ RDEPEND="
 	dev-libs/md4c
 	dev-libs/nspr
 	dev-libs/nss
+	dev-libs/openssl
 	dev-libs/wayland
 	gnome-base/gsettings-desktop-schemas
 	media-libs/alsa-lib
@@ -104,6 +106,21 @@ src_install() {
 	# всё дерево приложения: deb несёт usr/share/max -> ставим в /opt/max
 	insinto /opt
 	doins -r "${S}/usr/share/max" || die
+
+	# Дебандинг (проверено swap-тестами 2026-10-13: вынос .so -> запуск ->
+	# сверка лога с бейзлайном -> возврат; см. max-internals.md §10):
+	#  - libsecret: системная app-crypt/libsecret-0.21.7 (тот же SONAME);
+	#  - libssl/libcrypto: системный dev-libs/openssl-3.5.8. НЕ ГОСТ (у бандла
+	#    был), но на публичном TLS-стеке макс поведенчески идентичен
+	#    (сверено A/B); выигрыш — системные апдейты безопасности.
+	# НЕ трогаем Qt: приватный ABI (QtPrivate_6_11_0 в бандле vs 6_11_2 в
+	# системе) несовместим даже между патч-релизами — любая подмена Qt-либы
+	# даёт "undefined symbol ... Qt_6_PRIVATE_API" (проверено на всех 10);
+	# Concurrent/Xml формально грузятся, но создают ДВА Qt-рантайма в одном
+	# процессе — не делаем.
+	rm -f "${D}"/opt/max/lib64/libsecret-1.so.0* \
+		"${D}"/opt/max/lib64/libssl.so.3* \
+		"${D}"/opt/max/lib64/libcrypto.so.3* || die
 
 	# исполняемые файлы (doins ставит 0644 — восстанавливаем +x)
 	fperms 0755 \

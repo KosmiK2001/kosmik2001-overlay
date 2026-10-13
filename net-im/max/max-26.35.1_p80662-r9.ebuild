@@ -111,15 +111,22 @@ src_install() {
 		/opt/max/bin/crashpad_handler \
 		/opt/max/bin/max-service/bin/max-service
 
-	# единая точка запуска — обёртка /usr/bin/max (обычный режим или джейл)
+	# Точка запуска — обёртка /usr/bin/max. БЕЗ USE="jail-net" в ней только
+	# минимум, без которого приложение не стартует (живая шина + runtime-dir
+	# + уход из мёртвого cwd); ветка джейла добавляется исключительно при
+	# jail-net, чтобы обычный пакет не содержал ссылок на max_jail.sh.
 	dodir /usr/bin
-	cat > "${D}/usr/bin/max" <<'EOF'
-#!/bin/sh
-# MAX — единая точка запуска. При USE="jail-net" (маркер /etc/max/jail-net)
-# запуск идёт через изолированное окружение max_jail.sh.
+	{
+		echo '#!/bin/sh'
+		if use jail-net; then
+			cat <<'JAIL'
+# USE="jail-net": маркер включает изолированный запуск
 if [ -f /etc/max/jail-net ]; then
 	exec sudo -n /usr/libexec/max-jail/max_jail.sh --x11 --dbus -- /opt/max/bin/max "$@"
 fi
+JAIL
+		fi
+		cat <<'BASE'
 # Живая сессионная шина + runtime-dir: всегда берём systemd-user-bus, если она
 # существует — в ssh/старых сессиях DBUS_SESSION_BUS_ADDRESS может указывать на
 # мёртвую шину, а приложению нужен живой Secret Service (launch.cpp:102 — иначе
@@ -130,21 +137,21 @@ fi
 if [ -d "/run/user/$(id -u)" ]; then
 	export XDG_RUNTIME_DIR="/run/user/$(id -u)"
 fi
-# Запуск из каталога, который пересоздали под ногами (emerge --unmerge +
-# emerge воссоздают /opt/max с ДРУГИМ инодом; отключённый носитель — то же
-# самое). Проверка "[ -d $PWD ]" НЕ ловит этот случай: путь существует,
-# bash'овский `pwd -P` тоже врёт (резолвит логический $PWD). Единственный
-# надёжный признак — суффикс "(deleted)" у /proc/self/cwd. Без этого
-# приложение абортит SIGABRT сразу после первой строки лога (воспроизведено).
+# Запуск из каталога, который пересоздали под ногами (emerge --unmerge + emerge
+# воссоздают /opt/max с ДРУГИМ инодом; отключённый носитель — то же самое).
+# "[ -d $PWD ]" и bash'овский `pwd -P` этот случай НЕ ловят (путь существует).
+# Надёжный признак — суффикс "(deleted)" у /proc/self/cwd; без ухода из такого
+# cwd приложение абортит SIGABRT сразу после первой строки лога (воспроизведено).
 case "$(readlink /proc/self/cwd 2>/dev/null)" in
 	*'(deleted)') cd "$HOME" 2>/dev/null || cd / ;;
 esac
-# Программный рендер Qt Quick нужен ТОЛЬКО в джейле (там GL/EGL мёртв,
-# он включён в max_jail.sh). На хосте он рисует чёрную полосу ~70px внизу
-# окна (замер попиксельно: строки 604..673 яркости 0.0 против равномерных
-# 77.7 при нативном GL) — здесь его НЕ ставим.
+# QT_QUICK_BACKEND=software сюда НЕ ставить: он нужен только при изолированном
+# запуске (USE="jail-net", включает сам лаунчер), а на хосте рисует чёрную
+# полосу ~70px внизу окна (замер: строки яркости 0.0 против равномерных 77.7
+# при нативном GL).
 exec /opt/max/bin/max "$@"
-EOF
+BASE
+	} > "${D}/usr/bin/max" || die
 	fperms 0755 /usr/bin/max
 
 	# .desktop: Exec -> наша обёртка (в deb жёстко прописан /usr/share/max/bin/max);

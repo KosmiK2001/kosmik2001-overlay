@@ -12,17 +12,26 @@
 	<longdescription lang="en">
 MAX is a messenger client for Russia's MAX network. The Linux package is a
 proprietary Qt6/QtWebEngine binary distributed as .deb (download.max.ru).
-Almost all libraries are bundled under /usr/share/max/lib64; only the X11/GL
-system layer and glib are needed from the system.
+Almost all libraries are bundled under /opt/max/lib64; only the X11/GL system
+layer and glib are needed from the system. Installed to /opt/max, launched via
+the /usr/bin/max wrapper. With USE="jail-net" the wrapper dispatches into an
+isolated environment (own netns + DNS allowlist + filesystem masks + hidepid).
 	</longdescription>
 	<longdescription lang="ru">
 Мессенджер MAX. Linux-пакет — проприетарный бинарник Qt6/QtWebEngine
 (распространяется как .deb с download.max.ru). Почти все библиотеки
-бандлятся в /usr/share/max/lib64; из системы нужен только X11/GL-слой и glib.
-Запуск рекомендуется через джейл (netns + DNS-allowlist + маски ФС) из-за
-недоверенного характера приложения.
+бандлятся в /opt/max/lib64; из системы нужен только X11/GL-слой и glib.
+Установка в /opt/max, запуск через обёртку /usr/bin/max.
+
+По умолчанию приложение запускается обычным образом. С USE="jail-net"
+(по умолчанию ВЫКЛ) обёртка задействует изолированное окружение
+/usr/libexec/max-jail/max_jail.sh: собственный netns с единственным
+default-route (приватные сети и policy-routing хоста недостижимы),
+DNS-allowlist только 77.88.8.8/8.8.8.8/9.9.9.9/1.1.1.1 (локальные резолверы
+и dnsmasq недоступны), маски ФС и /proc с hidepid=2, чистое окружение
+без *_proxy и сброшенные capabilities.
 	</longdescription>
 	<use>
-		<flag name="">Нет USE-флагов; пакет целиком prebuilt (RESTRICT=strip)</flag>
+		<flag name="jail-net">Изолированный запуск мессенджера (netns + DNS-allowlist + маски ФС + hidepid). Требует passwordless sudo для /usr/libexec/max-jail/max_jail.sh. По умолчанию ВЫКЛ.</flag>
 	</use>
 </pkgmetadata>

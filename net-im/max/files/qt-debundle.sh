@@ -48,7 +48,7 @@ B=/opt/max/lib64
 IMAGE=/var/tmp/portage/dev-qt/qtbase-6.11.0/image/usr/lib64
 # модули qtbase, которые есть и в бандле max (Svg — это qtsvg, отдельный пакет)
 QT_LIBS="libQt6Core libQt6Gui libQt6Network libQt6DBus libQt6Widgets libQt6Xml libQt6Concurrent libQt6OpenGL libQt6XcbQpa"
-LOG="$PROJ_ROOT/qt-debundle.log"
+LOG="${QT_DEBUNDLE_LOG:-$HOME/.cache/max-debundle.log}"
 
 need_root() { sudo -n true 2>/dev/null || { echo "ERR: нужен passwordless sudo (sudo -n)"; exit 1; }; }
 
@@ -79,10 +79,12 @@ build_svg() {
   qtsvg_tar="$(sudo -n find /home /var/cache -name 'qtsvg-everywhere-src-6.11.0.tar.xz' 2>/dev/null | head -1)"
   [ -n "$qtsvg_tar" ] || { echo "ERR: нет тарбола qtsvg (нужен ebuild dev-qt/qtsvg-6.11.0 manifest)"; exit 1; }
   need_root
-  # 1) stage-копия qtbase-image (root-only исходник -> копия от root, читаемая юзеру)
-  rm -rf "$STAGE_DIR"; mkdir -p "$STAGE_DIR"
+  # 1) stage-копия qtbase-image (root-only исходник; каталоги могут быть в
+  #    /var/tmp, chown юзеру, чтобы cmake/ninja работали от него)
+  sudo -n rm -rf "$STAGE_DIR" "$S"
+  sudo -n mkdir -p "$STAGE_DIR/usr" "$S"
   sudo -n cp -a "/var/tmp/portage/dev-qt/qtbase-6.11.0/image/usr/." "$STAGE_DIR/usr/"
-  sudo -n chown -R "$USER" "$STAGE_DIR"
+  sudo -n chown -R "$(id -un)" "$STAGE_DIR" "$S"
   # 2) распаковка исходников qtsvg
   mkdir -p "$S/qtsvg-src"; tar -xf "$qtsvg_tar" -C "$S" 2>/dev/null
   rm -rf "$S/qtsvg-src"; mv "$S/qtsvg-everywhere-src-6.11.0" "$S/qtsvg-src"
@@ -120,7 +122,7 @@ build_svg() {
 
 deploy() {
   need_root
-  mkdir -p "$BACKUP"
+  sudo -n mkdir -p "$BACKUP" || { echo "ERR: не могу создать $BACKUP"; exit 1; }
   # 1) сборка, если image нет или просят пересобрать
   if [ "$MODE" = rebuild ] || ! image_ready; then build_qtbase; fi
   echo "== проверка версии и приватного ABI в собранном qtbase =="
@@ -135,7 +137,7 @@ deploy() {
     for f in "$B/$l".so.6*; do
       [ -e "$f" ] || [ -L "$f" ] || continue
       [ -e "$BACKUP/$(basename "$f")" ] && continue   # уже в бэкапе
-      sudo -n mv "$f" "$BACKUP/"
+      sudo -n mv "$f" "$BACKUP/" || { echo "ERR: mv $f -> $BACKUP"; exit 1; }
       mv_backed=$((mv_backed+1))
     done
   done
@@ -144,7 +146,7 @@ deploy() {
     for f in "$B"/libQt6Svg.so.6*; do
       [ -e "$f" ] || [ -L "$f" ] || continue
       [ -e "$BACKUP/$(basename "$f")" ] && continue
-      sudo -n mv "$f" "$BACKUP/"
+      sudo -n mv "$f" "$BACKUP/" || { echo "ERR: mv $f -> $BACKUP"; exit 1; }
       mv_backed=$((mv_backed+1))
     done
   fi
@@ -186,6 +188,11 @@ deploy() {
 
 restore() {
   need_root
+  if sudo -n [ -z "$(sudo -n ls -A "$BACKUP" 2>/dev/null)" ]; then
+    echo "ERR: бэкап $BACKUP пуст или отсутствует — НЕ сношу подложенные либы"
+    echo "    (venedorские можно восстановить: emerge -1 =net-im/max или из image сборки)"
+    exit 1
+  fi
   echo "== откат: вендорские либы из $BACKUP обратно в $B =="
   # сначала убрать подложенные (и любые libQt6 из списка, не вендорские)
   for l in $QT_LIBS libQt6Svg; do
@@ -194,11 +201,11 @@ restore() {
   restored=0
   for f in "$BACKUP"/*; do
     [ -e "$f" ] || [ -L "$f" ] || continue
-    sudo -n mv -f "$f" "$B/"
+    sudo -n mv -f "$f" "$B/" || { echo "ERR: mv -f $f -> $B"; exit 1; }
     restored=$((restored+1))
   done
   echo "   восстановлено: $restored"
-  echo "   в lib64: $(ls "$B" | wc -l) файлов (ожидается 175 при r10, 179 при r9)"
+  echo "   в lib64: $(sudo -n ls "$B" | wc -l) файлов (ожидается 175 при r10, 179 при r9)"
 }
 
 case "$MODE" in

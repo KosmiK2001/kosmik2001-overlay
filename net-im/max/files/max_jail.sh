@@ -14,7 +14,8 @@
 #           ~/.cache/max), всё остальное в /home скрыто; /etc — белый список;
 #           /root, /sys, /run, /var/log, /var/tmp, /var/lib/dbus — пусто.
 #           /tmp НЕ маскируется (и так tmpfs; там X11-сокеты).
-#    - env:  чистое -i окружение (никаких *_proxy), юзер = --juid (uid 1000),
+#    - env:  чистое -i окружение (никаких *_proxy), юзер = --juid (по умолчанию
+#      вызвавший пользователь),
 #            все capability сброшены (capsh --drop=all).
 #    - никаких изменений системы: сеть/маски умирают сами; создаются только
 #            каталоги данных приложения в домашней папке пользователя.
@@ -29,7 +30,7 @@
 #    -n ИМЯ      имя netns (default: maxjail)
 #    -s A.B.C.D/L подсеть veth (default: 10.200.0.0/30)
 #    -d DIR      бинд дополнительного каталога данных в ~/data
-#    --juid N    uid приложения (default: 1000 = текущий пользователь)
+#    --juid N    uid приложения (default: вызвавший пользователь — SUDO_UID или id -u)
 #    --home-dir DIR  домашний каталог юзера (default: из /etc/passwd для JUID)
 #    --home-mode appdirs|full   appdirs: видны только каталоги приложения
 #              (default); full: виден весь дом (только для отладки/первого запуска)
@@ -48,7 +49,7 @@ SUBNET="10.200.0.0/30"
 GW="10.200.0.1"
 JIP="10.200.0.2"
 DATA=""
-JUID=1000
+JUID="${SUDO_UID:-$(id -u)}"   # вызвавший пользователь (через sudo — SUDO_UID); НЕ 1000
 HOME_MODE="appdirs"
 HOME_DIR=""
 X11=0
@@ -228,7 +229,8 @@ t_ok "/etc/wireguard отсутствует"     '[ ! -e /etc/wireguard ]'
 t_ok "/etc/portage отсутствует"       '[ ! -e /etc/portage ]'
 t_ok "/etc/environment отсутствует"   '[ ! -e /etc/environment ]'
 t_ok "/etc/proxychains.conf отсутствует" '[ ! -e /etc/proxychains.conf ]'
-t_ok "/etc/hosts пуст"               '[ ! -s /etc/hosts ]'
+t_ok "/etc/hosts: только localhost, без LAN-имён" \
+  '[ -s /etc/hosts ] && [ "$(grep -cvE "^127\.0\.0\.1[[:space:]]+localhost([[:space:]]|$)" /etc/hosts)" -eq 0 ]'
 t_ok "machine-id не хостовый"         '[ "$(cat /etc/machine-id)" != "$HOST_MID" ]'
 t_ok "/root пуст"                    '[ $(ls -A /root 2>/dev/null | wc -l) -eq 0 ]'
 # 10. права
@@ -257,7 +259,7 @@ CMD_Q=$(printf '%q ' "${CMD[@]}")
 cat > "$RUNNER_DIR/.run.sh" <<RUNEOF
 #!/bin/sh
 # dbus + keyring ДОЛЖНЫ быть от юзера (root-демон отказывает клиенту uid!=0);
-# раннер исполняется под \$(id -u)=1000 после capsh
+# раннер исполняется под \$(id -u)=целевого юзера после capsh
 if [ "\$MAXJAIL_DBUS" = "1" ]; then
   rm -f "\$HOME/.dbus-sock" /tmp/.maxjail-dbus-addr 2>/dev/null
   dbus-daemon --session --nofork --print-address=1 --address="unix:path=\$HOME/.dbus-sock" \
@@ -289,7 +291,7 @@ if [[ $X11 -eq 1 ]]; then
     # (mount-ns общий), и главное — DRI2/DRI3 передают fd по SCM_RIGHTS, что
     # через socat-TCP невозможно (GLX-контекст не создать: BadValue).
     # Доступ: xhost +si:localuser:<пользователь> — сервер сверяет SO_PEERCRED
-    # (джейл-процесс = uid 1000), xauth-куки не нужны.
+    # (джейл-процесс = uid вызвавшего), xauth-куки не нужны.
     if command -v xhost >/dev/null 2>&1; then
       XAUTH="$HOME_DIR/.Xauthority"
       if DISPLAY=:0 XAUTHORITY="$XAUTH" xhost +si:localuser:"$REALUSER" >/dev/null 2>&1; then

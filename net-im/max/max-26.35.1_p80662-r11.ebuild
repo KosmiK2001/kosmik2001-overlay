@@ -32,7 +32,16 @@ SRC_URI="https://download.max.ru/linux/deb/pool/main/m/max/${MY_PN}-${MY_PV}.deb
 LICENSE="all-rights-reserved" # проприетарный клиент, нет явной лицензии
 SLOT="0"
 KEYWORDS="~amd64"
-IUSE="jail-net"
+IUSE="jail-net qt_stack_build"
+
+# qt_stack_build (по умолчанию ВЫКЛ): собрать Qt 6.11.0 из исходников
+# (dev-qt/qtbase-6.11.0 + dev-qt/qtsvg-6.11.0 из этого же оверлея) и подложить
+# собранные libQt6* вместо вендорских в /opt/max. Сборка запускается в
+# pkg_postinst (там нет sandbox'а), идёт через ebuild-фазы в /var/tmp/portage —
+# в систему пакеты НЕ ставятся, системный Qt 6.11.2 не затрагивается.
+# Время: qtbase ~7 мин на 32 ядрах (ccache), qtsvg ~1 мин. Повторный emerge
+# с флагом переиспользует готовый image (быстро). См. Qt-debundle в
+# /usr/libexec/max-debundle/README.debundle.md.
 
 # НЕ шиповать и НЕ пересобирать бандловые бинарники: strip ломает
 # QtWebEngine/их .so; все ELF — prebuilt.
@@ -195,11 +204,34 @@ BASE
 		keepdir /etc/max
 		touch "${D}/etc/max/jail-net" || die
 	fi
+
+	if use qt_stack_build; then
+		# хелпер дебандинга Qt + маркер; сама сборка — в pkg_postinst (root, без sandbox)
+		exeinto /usr/libexec/max-debundle
+		doexe "${FILESDIR}/qt-debundle.sh"
+		insinto /usr/libexec/max-debundle
+		doins "${FILESDIR}/README.debundle.md"
+		keepdir /etc/max
+		touch "${D}/etc/max/qt-stack-build" || die
+		keepdir /var/lib/max
+	fi
 }
 
 pkg_postinst() {
 	xdg_desktop_database_update
 	xdg_icon_cache_update
+
+	# сборка своего Qt 6.11.0 для бандла (используется только при USE=qt_stack_build;
+	# pkg_postinst — единственная фаза без sandbox, где можно запустить ebuild/смake)
+	if use qt_stack_build; then
+		elog "USE=qt_stack_build: собираю Qt 6.11.0 и подкладываю в /opt/max"
+		elog "(qtbase ~7 мин + qtsvg ~1 мин; повторные emerge переиспользуют image)"
+		QT_DEBUNDLE_PROJ_ROOT=/usr/libexec/max-debundle \
+		QT_DEBUNDLE_BACKUP=/var/lib/max/qt-vendor-backup \
+		QT_DEBUNDLE_STAGE=/var/tmp/qt-stage \
+		QT_DEBUNDLE_WORK=/var/tmp/qt-debundle-work \
+		/usr/libexec/max-debundle/qt-debundle.sh deploy --with-svg
+	fi
 
 	if use jail-net; then
 		elog "Изолированный запуск включён (/usr/bin/max -> max_jail.sh)."

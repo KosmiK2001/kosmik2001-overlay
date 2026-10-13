@@ -3,15 +3,18 @@
 
 EAPI=8
 
-# Официальный дистрибутив — только .deb (репозиторий download.max.ru).
 # MAX собран на Qt6/QtWebEngine, почти все библиотеки бандлятся в
-# /opt/max/lib64 (Qt6.11, FFmpeg 61, OpenSSL 3, libstdc++); из системы
-# нужен только X11/GL-слой + glib (список сверен по ldd с учётом
-# RPATH=$ORIGIN/../lib64).
+# /opt/max/lib64 (Qt6.11, FFmpeg 61, OpenSSL 3, libstdc++, своя libsecret);
+# список ниже сверен по трём источникам: NEEDED главного бинаря (11 системных
+# soname), поздние dlopen из lib64/*.so (GTK-тема/диалоги, NSS для WebEngine,
+# pulse/alsa, EGL/GBM, ibus) и Depends официального .deb / Requires
+# официального RPM-репозитория (download.max.ru/linux/rpm/el/9/x86_64).
 #
 # Установка в /opt/max (а не /usr/share): в бинарях нет жёстко зашитых
 # абсолютных путей, qt.conf относительный (Prefix=..), RPATH относительный —
-# перенос безопасен (проверено strings -a по всем ELF пакета).
+# перенос безопасен (проверено strings -a по всем ELF пакета). Официальные
+# пакеты кладут то же дерево в /usr/share/max и делают /usr/bin/max через
+# update-alternatives (postinst) — у нас единая обёртка, см. src_install.
 #
 # USE="jail-net" (по умолчанию ВЫКЛ): /usr/bin/max становится обёрткой,
 # которая при наличии маркера /etc/max/jail-net запускает приложение в
@@ -39,8 +42,6 @@ QA_PREBUILT="*"
 BDEPEND="app-arch/dpkg"
 
 RDEPEND="
-	app-cdr/cdrtools
-	app-crypt/libsecret
 	app-arch/bzip2
 	app-arch/zstd
 	app-misc/ca-certificates
@@ -49,19 +50,29 @@ RDEPEND="
 	dev-libs/glib:2
 	dev-libs/libgcrypt:0
 	dev-libs/md4c
+	dev-libs/nspr
+	dev-libs/nss
 	dev-libs/wayland
 	gnome-base/gsettings-desktop-schemas
+	media-libs/alsa-lib
 	media-libs/fontconfig
 	media-libs/freetype
 	media-libs/harfbuzz
 	media-libs/libglvnd
 	media-libs/libpng
+	media-libs/libpulse
 	media-libs/libva
+	media-libs/mesa
+	sys-apps/dbus
 	sys-apps/systemd
+	sys-apps/xdg-desktop-portal
 	sys-apps/util-linux
 	sys-libs/zlib
+	x11-libs/gtk+:3
 	x11-libs/libnotify
 	x11-libs/libX11
+	x11-libs/libXaw
+	x11-libs/libXres
 	x11-libs/libXScrnSaver
 	x11-libs/libxcb
 	x11-libs/libxkbcommon
@@ -71,11 +82,10 @@ RDEPEND="
 	x11-libs/xcb-util-wm
 	x11-themes/hicolor-icon-theme
 	jail-net? (
-		app-crypt/gnome-keyring
+		app-admin/sudo
+		gnome-base/gnome-keyring
 		net-firewall/iptables
-		net-misc/iproute2
-		sys-apps/dbus
-		sys-apps/sudo
+		sys-apps/iproute2
 		sys-libs/libcap
 		x11-apps/xhost
 	)
@@ -168,6 +178,28 @@ pkg_postinst() {
 		elog "Обычный запуск: /usr/bin/max (или пункт меню MAX)."
 		elog "Изоляция при желании: USE='jail-net' emerge -1 net-im/max."
 	fi
+
+	# Провайдер Secret Service: приложение (бандловая libsecret) хранит ключ
+	# своей SQLCipher-базы в коллекции "login". Без живого сервиса база
+	# считается битой и удаляется на каждом запуске ("Database key is
+	# incorrect, remove database" -> повторный QR-вход).
+	if ! has_version gnome-base/gnome-keyring && ! has_version kde-frameworks/kwallet; then
+		ewarn "Нет провайдера Secret Service (gnome-base/gnome-keyring): вход будет сбрасываться."
+	fi
+	# Портал-бэкенд: без него org.freedesktop.portal.Settings/FileChooser
+	# отсутствуют -> тема не читается, диалоги выбора файлов не работают
+	# (в логе соответствующие Warning). Для MATE/GTK подходит -gtk.
+	if ! has_version sys-apps/xdg-desktop-portal-gtk \
+		&& ! has_version sys-apps/xdg-desktop-portal-kde \
+		&& ! has_version sys-apps/xdg-desktop-portal-wlr; then
+		elog "Совет: поставь sys-apps/xdg-desktop-portal-gtk — тогда заработают тема (Settings),"
+		elog "диалоги выбора файлов (FileChooser) и нотификации через портал."
+	fi
+	elog "Известные ограничения нативной сборки (не лечатся из пакета):"
+	elog "  * трей — QtQuick.Labs.Platform требует QApplication, а клиент QGuiApplication;"
+	elog "    в бандловом xcb-плагине нет ни StatusNotifier, ни XEmbed (см. max-internals.md §4);"
+	elog "  * звонки — CallsSDK ждёт собственный локальный RPC-сервер, который не стартует;"
+	elog "  * max-service (313 МБ в /opt/max/bin) в Linux-сборке никем не запускается."
 }
 
 pkg_postrm() {

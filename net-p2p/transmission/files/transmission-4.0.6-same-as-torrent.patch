@@ -1,5 +1,5 @@
 --- a/libtransmission/quark.h	2025-06-16 21:07:21.000000000 +0300
-+++ b/libtransmission/quark.h	2026-10-14 21:04:42.683724364 +0300
++++ b/libtransmission/quark.h	2026-10-15 00:35:58.324222805 +0300
 @@ -92,6 +92,7 @@
      TR_KEY_doneDate,
      TR_KEY_download_dir,
@@ -9,7 +9,7 @@
      TR_KEY_download_queue_size,
      TR_KEY_downloadCount,
 --- a/libtransmission/quark.cc	2025-06-16 21:07:21.000000000 +0300
-+++ b/libtransmission/quark.cc	2026-10-14 22:47:43.964696173 +0300
++++ b/libtransmission/quark.cc	2026-10-15 00:35:58.325222797 +0300
 @@ -18,7 +18,7 @@
  namespace
  {
@@ -28,7 +28,7 @@
                                                               "download-queue-size"sv,
                                                               "downloadCount"sv,
 --- a/gtk/Prefs.cc	2025-06-16 21:07:21.000000000 +0300
-+++ b/gtk/Prefs.cc	2026-10-14 21:04:42.910722701 +0300
++++ b/gtk/Prefs.cc	2026-10-15 00:35:58.325222797 +0300
 @@ -49,7 +49,7 @@
          dir = tr_getDefaultDownloadDir();
      }
@@ -47,7 +47,7 @@
      tr_variantDictAddInt(d, TR_KEY_main_window_height, 500);
      tr_variantDictAddInt(d, TR_KEY_main_window_width, 300);
 --- a/gtk/Session.cc	2025-06-16 21:07:21.000000000 +0300
-+++ b/gtk/Session.cc	2026-10-14 22:20:57.288822463 +0300
++++ b/gtk/Session.cc	2026-10-15 00:35:58.326222790 +0300
 @@ -716,6 +716,18 @@
          return TR_PARSE_ERR;
      }
@@ -68,7 +68,7 @@
      {
          /* don't complain about torrent files in the watch directory
 --- a/gtk/OptionsDialog.cc	2025-06-16 21:07:21.000000000 +0300
-+++ b/gtk/OptionsDialog.cc	2026-10-14 22:57:50.132915001 +0300
++++ b/gtk/OptionsDialog.cc	2026-10-15 00:36:42.785888338 +0300
 @@ -19,6 +19,7 @@
  
  #include <giomm/file.h>
@@ -85,17 +85,16 @@
  
      void removeOldTorrent();
      void updateTorrent();
-@@ -98,6 +100,9 @@
+@@ -98,6 +100,8 @@
      FileList* file_list_ = nullptr;
      Gtk::CheckButton* run_check_ = nullptr;
      Gtk::CheckButton* trash_check_ = nullptr;
 +    Gtk::CheckButton* same_as_torrent_check_ = nullptr;
 +    PathButton* destination_chooser_ = nullptr;
-+    Gtk::Label* destination_label_ = nullptr;
      Gtk::ComboBox* priority_combo_ = nullptr;
      FreeSpaceLabel* freespace_label_ = nullptr;
  };
-@@ -185,6 +190,14 @@
+@@ -185,6 +189,14 @@
              new_file = true;
          }
  
@@ -110,7 +109,7 @@
          tr_ctorSetDownloadDir(ctor_.get(), TR_FORCE, downloadDir_.c_str());
          tr_ctorSetPaused(ctor_.get(), TR_FORCE, true);
          tr_ctorSetDeleteSource(ctor_.get(), false);
-@@ -217,6 +230,37 @@
+@@ -217,6 +229,26 @@
      }
  }
  
@@ -123,20 +122,9 @@
 +    gtr_pref_flag_set(TR_KEY_download_dir_same_as_torrent, active);
 +
 +    /* when the "download to the .torrent file's folder" checkbox is active,
-+     * the destination chooser is locked to the source file's parent directory */
-+    auto const lock_destination = active && !filename_.empty();
-+
-+    if (destination_chooser_ != nullptr)
-+    {
-+        destination_chooser_->set_sensitive(!lock_destination);
-+    }
-+
-+    if (destination_label_ != nullptr)
-+    {
-+        destination_label_->set_sensitive(!lock_destination);
-+    }
-+
-+    if (lock_destination)
++     * the destination defaults to the source file's parent directory, but the
++     * user is still free to pick a different folder here */
++    if (active && !filename_.empty())
 +    {
 +        downloadDir_ = Glib::path_get_dirname(filename_);
 +        freespace_label_->set_dir(downloadDir_);
@@ -148,7 +136,7 @@
  namespace
  {
  
-@@ -290,12 +334,12 @@
+@@ -290,12 +322,11 @@
      addTorrentFilters(source_chooser);
      source_chooser->signal_selection_changed().connect([this, source_chooser]() { sourceChanged(source_chooser); });
  
@@ -158,7 +146,6 @@
 +    destination_chooser_ = gtr_get_widget_derived<PathButton>(builder, "destination_button");
 +    destination_chooser_->set_filename(downloadDir_);
 +    destination_chooser_->set_shortcut_folders(gtr_get_recent_dirs("download"));
-+    destination_label_ = gtr_get_widget<Gtk::Label>(builder, "destination_label");
  
 -    destination_chooser->signal_selection_changed().connect([this, destination_chooser]()
 -                                                            { downloadDirChanged(destination_chooser); });
@@ -166,7 +153,7 @@
  
      bool flag = false;
      if (!tr_ctorGetPaused(ctor_.get(), TR_FORCE, &flag))
-@@ -312,6 +356,13 @@
+@@ -312,6 +343,13 @@
  
      trash_check_->set_active(flag);
  
@@ -181,7 +168,7 @@
       * so that it creates the tor/gtor objects */
      if (!filename_.empty())
 --- a/gtk/PrefsDialog.cc	2025-06-16 21:07:21.000000000 +0300
-+++ b/gtk/PrefsDialog.cc	2026-10-14 22:24:21.780347276 +0300
++++ b/gtk/PrefsDialog.cc	2026-10-15 00:35:58.326222790 +0300
 @@ -440,6 +440,8 @@
      init_check_button("start_on_add_check", TR_KEY_start_added_torrents);
      init_check_button("trash_on_add_check", TR_KEY_trash_original_torrent_files);
@@ -207,7 +194,7 @@
  }
  
 --- a/gtk/ui/gtk3/OptionsDialog.ui	2024-06-11 03:46:20.000000000 +0300
-+++ b/gtk/ui/gtk3/OptionsDialog.ui	2026-10-14 21:39:53.085746977 +0300
++++ b/gtk/ui/gtk3/OptionsDialog.ui	2026-10-15 00:35:58.327222782 +0300
 @@ -196,6 +196,22 @@
                </packing>
              </child>
@@ -232,7 +219,7 @@
                  <property name="visible">True</property>
                  <property name="can-focus">False</property>
 --- a/gtk/ui/gtk4/OptionsDialog.ui	2024-06-11 03:46:20.000000000 +0300
-+++ b/gtk/ui/gtk4/OptionsDialog.ui	2026-10-14 21:43:07.266187890 +0300
++++ b/gtk/ui/gtk4/OptionsDialog.ui	2026-10-15 00:35:58.327222782 +0300
 @@ -130,6 +130,19 @@
                </object>
              </child>
@@ -254,7 +241,7 @@
                  <property name="hexpand">1</property>
                  <property name="label">...</property>
 --- a/gtk/ui/gtk3/PrefsDialog.ui	2025-06-16 21:07:21.000000000 +0300
-+++ b/gtk/ui/gtk3/PrefsDialog.ui	2026-10-14 22:21:30.770580928 +0300
++++ b/gtk/ui/gtk3/PrefsDialog.ui	2026-10-15 00:35:58.328222774 +0300
 @@ -558,6 +558,22 @@
                          <property name="top-attach">5</property>
                        </packing>
@@ -279,7 +266,7 @@
                    <packing>
                      <property name="expand">False</property>
 --- a/gtk/ui/gtk4/PrefsDialog.ui	2025-06-16 21:07:21.000000000 +0300
-+++ b/gtk/ui/gtk4/PrefsDialog.ui	2026-10-14 22:22:50.679004474 +0300
++++ b/gtk/ui/gtk4/PrefsDialog.ui	2026-10-15 00:35:58.328222774 +0300
 @@ -381,6 +381,19 @@
                              </layout>
                            </object>

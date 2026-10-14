@@ -1,0 +1,302 @@
+--- a/libtransmission/quark.h	2025-06-16 21:07:21.000000000 +0300
++++ b/libtransmission/quark.h	2026-10-14 21:04:42.683724364 +0300
+@@ -92,6 +92,7 @@
+     TR_KEY_doneDate,
+     TR_KEY_download_dir,
+     TR_KEY_download_dir_free_space,
++    TR_KEY_download_dir_same_as_torrent,
+     TR_KEY_download_queue_enabled,
+     TR_KEY_download_queue_size,
+     TR_KEY_downloadCount,
+--- a/libtransmission/quark.cc	2025-06-16 21:07:21.000000000 +0300
++++ b/libtransmission/quark.cc	2026-10-14 22:47:43.964696173 +0300
+@@ -18,7 +18,7 @@
+ namespace
+ {
+ 
+-auto constexpr MyStatic = std::array<std::string_view, 401>{ ""sv,
++auto constexpr MyStatic = std::array<std::string_view, 402>{ ""sv,
+                                                              "activeTorrentCount"sv,
+                                                              "activity-date"sv,
+                                                              "activityDate"sv,
+@@ -89,6 +89,7 @@
+                                                              "doneDate"sv,
+                                                              "download-dir"sv,
+                                                              "download-dir-free-space"sv,
++                                                             "download-dir-same-as-torrent"sv,
+                                                              "download-queue-enabled"sv,
+                                                              "download-queue-size"sv,
+                                                              "downloadCount"sv,
+--- a/gtk/Prefs.cc	2025-06-16 21:07:21.000000000 +0300
++++ b/gtk/Prefs.cc	2026-10-14 21:04:42.910722701 +0300
+@@ -49,7 +49,7 @@
+         dir = tr_getDefaultDownloadDir();
+     }
+ 
+-    tr_variantDictReserve(d, 31);
++    tr_variantDictReserve(d, 32);
+     tr_variantDictAddStr(d, TR_KEY_watch_dir, dir);
+     tr_variantDictAddBool(d, TR_KEY_watch_dir_enabled, false);
+     tr_variantDictAddBool(d, TR_KEY_user_has_given_informed_consent, false);
+@@ -69,6 +69,7 @@
+     tr_variantDictAddBool(d, TR_KEY_torrent_complete_notification_enabled, true);
+     tr_variantDictAddBool(d, TR_KEY_torrent_complete_sound_enabled, true);
+     tr_variantDictAddBool(d, TR_KEY_show_options_window, true);
++    tr_variantDictAddBool(d, TR_KEY_download_dir_same_as_torrent, false);
+     tr_variantDictAddBool(d, TR_KEY_main_window_is_maximized, false);
+     tr_variantDictAddInt(d, TR_KEY_main_window_height, 500);
+     tr_variantDictAddInt(d, TR_KEY_main_window_width, 300);
+--- a/gtk/Session.cc	2025-06-16 21:07:21.000000000 +0300
++++ b/gtk/Session.cc	2026-10-14 22:20:57.288822463 +0300
+@@ -716,6 +716,18 @@
+         return TR_PARSE_ERR;
+     }
+ 
++    /* "save to the .torrent file's folder": when enabled, a torrent that was
++     * added from a local .torrent file keeps its download directory set to
++     * the folder that file lives in. Magnet links and URLs have no such file,
++     * so they fall back to the global download-dir preference. */
++    if (gtr_pref_flag_get(TR_KEY_download_dir_same_as_torrent))
++    {
++        if (char const* const source = tr_ctorGetSourceFile(ctor); source != nullptr && *source != '\0')
++        {
++            tr_ctorSetDownloadDir(ctor, TR_FORCE, Glib::path_get_dirname(source).c_str());
++        }
++    }
++
+     if (tr_torrentFindFromMetainfo(get_session(), metainfo) != nullptr)
+     {
+         /* don't complain about torrent files in the watch directory
+--- a/gtk/OptionsDialog.cc	2025-06-16 21:07:21.000000000 +0300
++++ b/gtk/OptionsDialog.cc	2026-10-14 22:57:50.132915001 +0300
+@@ -19,6 +19,7 @@
+ 
+ #include <giomm/file.h>
+ #include <glibmm/i18n.h>
++#include <glibmm/miscutils.h> /* Glib::path_get_dirname() */
+ #include <gtkmm/checkbutton.h>
+ #include <gtkmm/combobox.h>
+ #include <gtkmm/filefilter.h>
+@@ -80,6 +81,7 @@
+ private:
+     void sourceChanged(PathButton* b);
+     void downloadDirChanged(PathButton* b);
++    void onSameAsTorrentToggled();
+ 
+     void removeOldTorrent();
+     void updateTorrent();
+@@ -98,6 +100,9 @@
+     FileList* file_list_ = nullptr;
+     Gtk::CheckButton* run_check_ = nullptr;
+     Gtk::CheckButton* trash_check_ = nullptr;
++    Gtk::CheckButton* same_as_torrent_check_ = nullptr;
++    PathButton* destination_chooser_ = nullptr;
++    Gtk::Label* destination_label_ = nullptr;
+     Gtk::ComboBox* priority_combo_ = nullptr;
+     FreeSpaceLabel* freespace_label_ = nullptr;
+ };
+@@ -185,6 +190,14 @@
+             new_file = true;
+         }
+ 
++        /* if "same as torrent file" is active, keep the destination locked to
++         * the (possibly changed) source file's parent directory */
++        if (same_as_torrent_check_ != nullptr && same_as_torrent_check_->get_active() && !filename_.empty())
++        {
++            downloadDir_ = Glib::path_get_dirname(filename_);
++            freespace_label_->set_dir(downloadDir_);
++        }
++
+         tr_ctorSetDownloadDir(ctor_.get(), TR_FORCE, downloadDir_.c_str());
+         tr_ctorSetPaused(ctor_.get(), TR_FORCE, true);
+         tr_ctorSetDeleteSource(ctor_.get(), false);
+@@ -217,6 +230,37 @@
+     }
+ }
+ 
++void OptionsDialog::Impl::onSameAsTorrentToggled()
++{
++    bool const active = same_as_torrent_check_ != nullptr && same_as_torrent_check_->get_active();
++
++    /* remember this choice and write it to settings.json so it persists
++     * across visits to the add dialog */
++    gtr_pref_flag_set(TR_KEY_download_dir_same_as_torrent, active);
++
++    /* when the "download to the .torrent file's folder" checkbox is active,
++     * the destination chooser is locked to the source file's parent directory */
++    auto const lock_destination = active && !filename_.empty();
++
++    if (destination_chooser_ != nullptr)
++    {
++        destination_chooser_->set_sensitive(!lock_destination);
++    }
++
++    if (destination_label_ != nullptr)
++    {
++        destination_label_->set_sensitive(!lock_destination);
++    }
++
++    if (lock_destination)
++    {
++        downloadDir_ = Glib::path_get_dirname(filename_);
++        freespace_label_->set_dir(downloadDir_);
++        destination_chooser_->set_filename(downloadDir_);
++        updateTorrent();
++    }
++}
++
+ namespace
+ {
+ 
+@@ -290,12 +334,12 @@
+     addTorrentFilters(source_chooser);
+     source_chooser->signal_selection_changed().connect([this, source_chooser]() { sourceChanged(source_chooser); });
+ 
+-    auto* destination_chooser = gtr_get_widget_derived<PathButton>(builder, "destination_button");
+-    destination_chooser->set_filename(downloadDir_);
+-    destination_chooser->set_shortcut_folders(gtr_get_recent_dirs("download"));
++    destination_chooser_ = gtr_get_widget_derived<PathButton>(builder, "destination_button");
++    destination_chooser_->set_filename(downloadDir_);
++    destination_chooser_->set_shortcut_folders(gtr_get_recent_dirs("download"));
++    destination_label_ = gtr_get_widget<Gtk::Label>(builder, "destination_label");
+ 
+-    destination_chooser->signal_selection_changed().connect([this, destination_chooser]()
+-                                                            { downloadDirChanged(destination_chooser); });
++    destination_chooser_->signal_selection_changed().connect([this]() { downloadDirChanged(destination_chooser_); });
+ 
+     bool flag = false;
+     if (!tr_ctorGetPaused(ctor_.get(), TR_FORCE, &flag))
+@@ -312,6 +356,13 @@
+ 
+     trash_check_->set_active(flag);
+ 
++    /* "save to the .torrent file's folder" — remember the last user choice */
++    same_as_torrent_check_ = gtr_get_widget<Gtk::CheckButton>(builder, "same_as_torrent_check");
++    same_as_torrent_check_->set_active(gtr_pref_flag_get(TR_KEY_download_dir_same_as_torrent));
++    same_as_torrent_check_->signal_toggled().connect([this]() { onSameAsTorrentToggled(); });
++
++    onSameAsTorrentToggled();
++
+     /* trigger sourceChanged, either directly or indirectly,
+      * so that it creates the tor/gtor objects */
+     if (!filename_.empty())
+--- a/gtk/PrefsDialog.cc	2025-06-16 21:07:21.000000000 +0300
++++ b/gtk/PrefsDialog.cc	2026-10-14 22:24:21.780347276 +0300
+@@ -440,6 +440,8 @@
+     init_check_button("start_on_add_check", TR_KEY_start_added_torrents);
+     init_check_button("trash_on_add_check", TR_KEY_trash_original_torrent_files);
+     init_chooser_button("download_dir_chooser", TR_KEY_download_dir);
++    auto* const download_dir_same_as_torrent_check =
++        init_check_button("download_dir_same_as_torrent_check", TR_KEY_download_dir_same_as_torrent);
+     init_spin_button("max_active_downloads_spin", TR_KEY_download_queue_size, 0, std::numeric_limits<int>::max(), 1);
+     init_spin_button("max_inactive_time_spin", TR_KEY_queue_stalled_minutes, 1, std::numeric_limits<int>::max(), 15);
+     init_check_button("append_suffix_to_incomplete_check", TR_KEY_rename_partial_files);
+@@ -448,6 +450,14 @@
+     init_check_button("download_done_script_check", TR_KEY_script_torrent_done_enabled);
+     init_chooser_button("download_done_script_chooser", TR_KEY_script_torrent_done_filename);
+ 
++    auto const set_download_dir_sensitivity = [this, download_dir_same_as_torrent_check]()
++    {
++        bool const same_as_torrent = download_dir_same_as_torrent_check->get_active();
++        get_widget<PathButton>("download_dir_chooser")->set_sensitive(!same_as_torrent);
++    };
++    download_dir_same_as_torrent_check->signal_toggled().connect(set_download_dir_sensitivity);
++    set_download_dir_sensitivity();
++
+     on_core_prefs_changed(TR_KEY_download_dir);
+ }
+ 
+--- a/gtk/ui/gtk3/OptionsDialog.ui	2024-06-11 03:46:20.000000000 +0300
++++ b/gtk/ui/gtk3/OptionsDialog.ui	2026-10-14 21:39:53.085746977 +0300
+@@ -196,6 +196,22 @@
+               </packing>
+             </child>
+             <child>
++              <object class="GtkCheckButton" id="same_as_torrent_check">
++                <property name="label" translatable="yes">Save to the same folder as the .torrent _file</property>
++                <property name="visible">True</property>
++                <property name="can-focus">True</property>
++                <property name="receives-default">False</property>
++                <property name="valign">center</property>
++                <property name="use-underline">True</property>
++                <property name="draw-indicator">True</property>
++              </object>
++              <packing>
++                <property name="left-attach">0</property>
++                <property name="top-attach">8</property>
++                <property name="width">2</property>
++              </packing>
++            </child>
++            <child>
+               <object class="GtkLabel" id="free_space_label">
+                 <property name="visible">True</property>
+                 <property name="can-focus">False</property>
+--- a/gtk/ui/gtk4/OptionsDialog.ui	2024-06-11 03:46:20.000000000 +0300
++++ b/gtk/ui/gtk4/OptionsDialog.ui	2026-10-14 21:43:07.266187890 +0300
+@@ -130,6 +130,19 @@
+               </object>
+             </child>
+             <child>
++              <object class="GtkCheckButton" id="same_as_torrent_check">
++                <property name="label" translatable="1">Save to the same folder as the .torrent _file</property>
++                <property name="focusable">1</property>
++                <property name="valign">center</property>
++                <property name="use-underline">1</property>
++                <layout>
++                  <property name="column">0</property>
++                  <property name="row">8</property>
++                  <property name="column-span">2</property>
++                </layout>
++              </object>
++            </child>
++            <child>
+               <object class="GtkLabel" id="free_space_label">
+                 <property name="hexpand">1</property>
+                 <property name="label">...</property>
+--- a/gtk/ui/gtk3/PrefsDialog.ui	2025-06-16 21:07:21.000000000 +0300
++++ b/gtk/ui/gtk3/PrefsDialog.ui	2026-10-14 22:21:30.770580928 +0300
+@@ -558,6 +558,22 @@
+                         <property name="top-attach">5</property>
+                       </packing>
+                     </child>
++                    <child>
++                      <object class="GtkCheckButton" id="download_dir_same_as_torrent_check">
++                        <property name="label" translatable="yes">Download to the same folder as the .torrent _file</property>
++                        <property name="visible">True</property>
++                        <property name="can-focus">True</property>
++                        <property name="receives-default">False</property>
++                        <property name="valign">center</property>
++                        <property name="use-underline">True</property>
++                        <property name="draw-indicator">True</property>
++                      </object>
++                      <packing>
++                        <property name="left-attach">0</property>
++                        <property name="top-attach">6</property>
++                        <property name="width">2</property>
++                      </packing>
++                    </child>
+                   </object>
+                   <packing>
+                     <property name="expand">False</property>
+--- a/gtk/ui/gtk4/PrefsDialog.ui	2025-06-16 21:07:21.000000000 +0300
++++ b/gtk/ui/gtk4/PrefsDialog.ui	2026-10-14 22:22:50.679004474 +0300
+@@ -381,6 +381,19 @@
+                             </layout>
+                           </object>
+                         </child>
++                        <child>
++                          <object class="GtkCheckButton" id="download_dir_same_as_torrent_check">
++                            <property name="label" translatable="1">Download to the same folder as the .torrent _file</property>
++                            <property name="focusable">1</property>
++                            <property name="valign">center</property>
++                            <property name="use-underline">1</property>
++                            <layout>
++                              <property name="column">0</property>
++                              <property name="row">6</property>
++                              <property name="column-span">2</property>
++                            </layout>
++                          </object>
++                        </child>
+                       </object>
+                     </child>
+                     <child>

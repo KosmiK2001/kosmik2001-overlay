@@ -27,6 +27,16 @@
 #=====================================================================
 set -u
 
+# Защита от мёртвого cwd — как в обёртке /usr/bin/max (r8): emerge --unmerge +
+# emerge пересоздают /opt/max с ДРУГИМ инодом; если хелпер запущен из каталога,
+# который пересоздали под ногами (например /opt/max/bin), getcwd() падает и
+# cmake/ebuild отказываются стартовать ("Current working directory cannot be
+# established"). "[ -d $PWD ]" и `pwd -P` этот случай НЕ ловят (путь существует),
+# надёжный признак — суффикс "(deleted)" у /proc/self/cwd.
+case "$(readlink /proc/self/cwd 2>/dev/null)" in
+	*'(deleted)') cd "$HOME" 2>/dev/null || cd / ;;
+esac
+
 MODE="${1:-deploy}"   # deploy | restore | rebuild
 WITH_SVG=0
 [ "${2:-}" = --with-svg ] && WITH_SVG=1

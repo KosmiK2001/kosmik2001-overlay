@@ -92,9 +92,9 @@ RDEPEND="
 	x11-libs/xcb-util-keysyms
 	x11-libs/xcb-util-wm
 	x11-themes/hicolor-icon-theme
+	gnome-base/gnome-keyring
 	jail-net? (
 		app-admin/sudo
-		gnome-base/gnome-keyring
 		net-firewall/iptables
 		sys-apps/iproute2
 		sys-libs/libcap
@@ -162,6 +162,45 @@ if [ -S "/run/user/$(id -u)/bus" ]; then
 fi
 if [ -d "/run/user/$(id -u)" ]; then
 	export XDG_RUNTIME_DIR="/run/user/$(id -u)"
+fi
+# Амнезия-фикс: MAX хранит ключ SQLCipher-БД в keyring-коллекции login; без неё
+# база удаляется каждый запуск и вход сбрасывается (см. max-internals.md §5).
+# На этой машине PAM не передаёт пароль (вход без пароля) — логин-коллекцию
+# gnome-keyring не создаёт. Пароль коллекции — из ~/.config/max/keyring-pass
+# (0600), при первом запуске генерируется. Пустой мастер-пароль gnome-keyring
+# для login-коллекции не принимает (проверено) — пароль обязателен.
+# ВАЖНО: org.freedesktop.secrets на шине обязан держать НАШ демон — systemd-
+# D-Bus-активация (gnome-keyring-daemon.socket) при обращении MAX к секретам
+# поднимает свой юнит с ПУСТЫМ паролем, которому наша коллекция недоступна
+# ("object does not exist"). Поэтому при необходимости перехватываем шину:
+# стоп активатора, снятие чужих демонов, подъём своего (--login + --start).
+KP="${XDG_CONFIG_HOME:-$HOME/.config}/max/keyring-pass"
+if command -v gdbus >/dev/null 2>&1; then
+	RU="/run/user/$(id -u)"
+	if [ ! -s "$KP" ]; then
+		mkdir -p "${KP%/*}" 2>/dev/null
+		umask 077
+		head -c 24 /dev/urandom | base64 | tr -d '\n' > "$KP" 2>/dev/null
+		chmod 600 "$KP" 2>/dev/null
+	fi
+	if [ -s "$KP" ]; then
+		LOCKED=true
+		DBUS_SESSION_BUS_ADDRESS="unix:path=$RU/bus" gdbus call --session \
+			--dest org.freedesktop.secrets --object-path /org/freedesktop/secrets/collection/login \
+			--method org.freedesktop.DBus.Properties.Get \
+			org.freedesktop.Secret.Collection Locked 2>/dev/null | grep -q false && LOCKED=false
+		if [ "$LOCKED" = true ]; then
+			systemctl --user stop gnome-keyring-daemon.socket 2>/dev/null || true
+			for _p in $(ps -eo pid,args | awk '$2 == "/usr/bin/gnome-keyring-daemon" {print $1}'); do
+				kill -9 "$_p" 2>/dev/null || true
+			done
+			sleep 1
+			printf '%s\n' "$(cat "$KP")" | /usr/bin/gnome-keyring-daemon --login \
+				--components=secrets,ssh,pkcs11 >/dev/null 2>&1 || true
+			/usr/bin/gnome-keyring-daemon --start >/dev/null 2>&1 || true
+			sleep 1
+		fi
+	fi
 fi
 # Запуск из каталога, который пересоздали под ногами (emerge --unmerge + emerge
 # воссоздают /opt/max с ДРУГИМ инодом; отключённый носитель — то же самое).
@@ -232,6 +271,9 @@ pkg_postinst() {
 		elog "Сборка: qtbase ~7 мин + qtsvg ~1 мин; повторный запуск переиспользует image."
 		elog "Откат на вендорские: sudo /usr/libexec/max-debundle/qt-debundle.sh --restore"
 	fi
+	elog "Амнезия входа исправлена: ключ SQLCipher-БД сохраняется в keyring-коллекции"
+	elog "login (пароль из ~/.config/max/keyring-pass, 0600, создаётся при первом"
+	elog "запуске; обёртка разблокирует коллекцию автоматически, если нужно)."
 
 	if use jail-net; then
 		elog "Изолированный запуск включён (/usr/bin/max -> max_jail.sh)."

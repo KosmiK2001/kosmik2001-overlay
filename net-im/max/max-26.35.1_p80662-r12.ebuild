@@ -221,16 +221,18 @@ pkg_postinst() {
 	xdg_desktop_database_update
 	xdg_icon_cache_update
 
-	# сборка своего Qt 6.11.0 для бандла (используется только при USE=qt_stack_build;
-	# pkg_postinst — единственная фаза без sandbox, где можно запустить ebuild/смake)
+	# USE=qt_stack_build: НЕ собираем Qt в postinst — вложенный ebuild внутри emerge
+	# deadlock'ает на lockfile портажа (/var/db/.pkg-ebuild.portage_lockfile держит
+	# родительский emerge на всю сессию, а ebuild ждёт его же). Хелпер установлен,
+	# сборка — отдельной командой (см. elog ниже).
 	if use qt_stack_build; then
-		elog "USE=qt_stack_build: собираю Qt 6.11.0 и подкладываю в /opt/max"
-		elog "(qtbase ~7 мин + qtsvg ~1 мин; повторные emerge переиспользуют image)"
-		QT_DEBUNDLE_PROJ_ROOT=/usr/libexec/max-debundle \
-		QT_DEBUNDLE_BACKUP=/var/lib/max/qt-vendor-backup \
-		QT_DEBUNDLE_STAGE=/var/tmp/qt-stage \
-		QT_DEBUNDLE_WORK=/var/tmp/qt-debundle-work \
-		/usr/libexec/max-debundle/qt-debundle.sh deploy --with-svg
+		elog "USE=qt_stack_build: хелпер установлен в /usr/libexec/max-debundle/."
+		elog "СОБЕРИ своё Qt и подложи в /opt/max одной командой (после окончания emerge):"
+		elog "  QT_DEBUNDLE_BACKUP=/var/lib/max/qt-vendor-backup \\
+		elog "  QT_DEBUNDLE_STAGE=/var/tmp/qt-stage QT_DEBUNDLE_WORK=/var/tmp/qt-debundle-work \\
+		elog "  /usr/libexec/max-debundle/qt-debundle.sh deploy --with-svg"
+		elog "Сборка: qtbase ~7 мин + qtsvg ~1 мин; повторный запуск переиспользует image."
+		elog "Откат на вендорские: /usr/libexec/max-debundle/qt-debundle.sh --restore"
 	fi
 
 	if use jail-net; then

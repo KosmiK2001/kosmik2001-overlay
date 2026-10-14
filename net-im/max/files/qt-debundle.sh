@@ -183,11 +183,21 @@ deploy() {
   echo "   подложено: $placed"
   ls -la "$B"/libQt6Core.so.6* | awk '{print "   " $NF, $5}' | head -2
 
-  # 4) проверка запуском
-  echo "== проверка: запуск max ~35с =="
-  cd "$PROJ_ROOT/.." || exit 1
-  export DISPLAY=:0 XDG_RUNTIME_DIR=/run/user/1000 DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus
-  timeout 35 /usr/bin/max > "$LOG" 2>&1
+  # 4) проверка запуском — запускать max ОТ РЕАЛЬНОГО ПОЛЬЗОВАТЕЛЯ
+  #    (если весь хелпер запущен через sudo от root, root без живой шины
+  #    уронит max с 'Fatal: libsecret unavailable' — ложный ПРОВАЛ)
+  echo "== проверка: запуск max ~35с от $(id -un) =="
+  JUID="${SUDO_UID:-$(id -u)}"
+  cd "$HOME" 2>/dev/null || cd /
+  RU="/run/user/$JUID"
+  if [ "$JUID" = "$(id -u)" ]; then
+    DISPLAY="${DISPLAY:-:0}" XDG_RUNTIME_DIR="$RU" \
+    DBUS_SESSION_BUS_ADDRESS="unix:path=$RU/bus" timeout 35 /usr/bin/max > "$LOG" 2>&1
+  else
+    # сам хелпер под root (sudo) — проверку от пользователя
+    sudo -n -u "#$JUID" sh -c "cd \"\$HOME\" 2>/dev/null; DISPLAY=:0 XDG_RUNTIME_DIR=$RU \
+      DBUS_SESSION_BUS_ADDRESS=unix:path=$RU/bus timeout 35 /usr/bin/max" > "$LOG" 2>&1
+  fi
   rc=$?
   undef=$(grep -cE 'undefined symbol|cannot open shared object' "$LOG")
   echo "   rc=$rc (124=жил) | undefined: $undef"

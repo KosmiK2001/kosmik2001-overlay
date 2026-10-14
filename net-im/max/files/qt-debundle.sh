@@ -203,7 +203,7 @@ deploy() {
   echo "   rc=$rc (124=жил) | undefined: $undef"
   [ $rc -eq 124 ] && [ "$undef" -eq 0 ] \
     && echo "   OK: приложение живёт на собранном qtbase" \
-    || echo "   ПРОВАЛ — откатываю: ./qt-debundle.sh --restore"
+    || echo "   ПРОВАЛ — проверь $LOG; откат вручную: ./qt-debundle.sh --restore"
 }
 
 restore() {

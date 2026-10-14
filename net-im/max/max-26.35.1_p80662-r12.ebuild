@@ -228,11 +228,9 @@ pkg_postinst() {
 	if use qt_stack_build; then
 		elog "USE=qt_stack_build: хелпер установлен в /usr/libexec/max-debundle/."
 		elog "СОБЕРИ своё Qt и подложи в /opt/max одной командой (после окончания emerge):"
-		elog "  QT_DEBUNDLE_BACKUP=/var/lib/max/qt-vendor-backup \\
-		elog "  QT_DEBUNDLE_STAGE=/var/tmp/qt-stage QT_DEBUNDLE_WORK=/var/tmp/qt-debundle-work \\
-		elog "  /usr/libexec/max-debundle/qt-debundle.sh deploy --with-svg"
+		elog "  sudo /usr/libexec/max-debundle/qt-debundle.sh deploy --with-svg"
 		elog "Сборка: qtbase ~7 мин + qtsvg ~1 мин; повторный запуск переиспользует image."
-		elog "Откат на вендорские: /usr/libexec/max-debundle/qt-debundle.sh --restore"
+		elog "Откат на вендорские: sudo /usr/libexec/max-debundle/qt-debundle.sh --restore"
 	fi
 
 	if use jail-net; then

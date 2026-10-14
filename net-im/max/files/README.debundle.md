@@ -13,24 +13,36 @@
 
 ## Что происходит при emerge
 
-`pkg_postinst` (единственная фаза без sandbox, работает от root) сам запускает
-хелпер: qtbase-6.11.0 собирается ebuild-фазами в `/var/tmp/portage` (~7 мин на
-32 ядрах, с ccache быстрее), qtsvg-6.11.0 — через cmake против собранного
-qtbase (~1 мин). В систему пакеты не ставятся, системный Qt 6.11.2 не
-затрагивается. Повторный emerge с флагом переиспользует готовый image — быстро.
+`emerge net-im/max` ставит бандл и хелпер. Сборка Qt запускается **отдельной
+командой после emerge** (в `pkg_postinst` её запускать нельзя: вложенный `ebuild`
+внутри emerge намертво виснет на lockfile портажа — `/var/db/.pkg-ebuild.portage_lockfile`
+держит родительский emerge, а ebuild ждёт его же):
+
+```sh
+sudo /usr/libexec/max-debundle/qt-debundle.sh deploy --with-svg
+```
+
+qtbase-6.11.0 собирается ebuild-фазами в `/var/tmp/portage` (~7 мин на 32 ядрах,
+с ccache быстрее), qtsvg-6.11.0 — через cmake против собранного qtbase (~1 мин).
+В систему пакеты не ставятся, системный Qt 6.11.2 не затрагивается. Повторный
+запуск переиспользует готовый image — быстро.
 
 ## Управление вручную
 
 ```sh
 # деплой (пересобрать при необходимости и подложить)
-/usr/libexec/max-debundle/qt-debundle.sh deploy --with-svg
+sudo /usr/libexec/max-debundle/qt-debundle.sh deploy --with-svg
 
 # откат на вендорские (из бэкапа /var/lib/max/qt-vendor-backup)
-/usr/libexec/max-debundle/qt-debundle.sh --restore
+sudo /usr/libexec/max-debundle/qt-debundle.sh --restore
 
 # штатный откат: пересборка без флага
 USE="-qt_stack_build" emerge -1 net-im/max
 ```
+
+Пути по умолчанию: из `/usr/libexec` — бэкап `/var/lib/max/qt-vendor-backup`,
+сборка `/var/tmp/...`; при запуске из проекта `Max/` — рядом с проектом.
+Переопределяются переменными `QT_DEBUNDLE_*`.
 
 ## Почему именно 6.11.0
 

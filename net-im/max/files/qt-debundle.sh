@@ -31,9 +31,20 @@ MODE="${1:-deploy}"   # deploy | restore | rebuild
 WITH_SVG=0
 [ "${2:-}" = --with-svg ] && WITH_SVG=1
 
-# Пути переопределяются env'ом (для установленной копии в /usr/libexec/max-debundle
-# pkg_postinst задаёт QT_DEBUNDLE_*; по умолчанию — работа из проекта Max/).
+# Пути переопределяются env'ом (QT_DEBUNDLE_*); по умолчанию выбираются
+# автоматически: если каталог хелпера доступен на запись (запуск из проекта
+# Max/) — рабочие каталоги рядом с ним, иначе (установлен в root-only
+# /usr/libexec/max-debundle, запуск пользователем) — /var/lib/max и /var/tmp.
 PROJ_ROOT="${QT_DEBUNDLE_PROJ_ROOT:-$(cd "$(dirname "$0")" && pwd)}"
+if [ -w "$PROJ_ROOT" ]; then
+  DEF_BACKUP="$PROJ_ROOT/qt-vendor-backup"
+  DEF_STAGE="$PROJ_ROOT/../temps/qt-stage"
+  DEF_WORK="$PROJ_ROOT/../temps"
+else
+  DEF_BACKUP=/var/lib/max/qt-vendor-backup
+  DEF_STAGE=/var/tmp/qt-stage
+  DEF_WORK=/var/tmp/qt-debundle-work
+fi
 OVERLAY="${QT_DEBUNDLE_OVERLAY:-}"
 # если OVERLAY не задан — ищем ebuild'ы в известных местах
 if [ -z "$OVERLAY" ]; then
@@ -41,8 +52,8 @@ if [ -z "$OVERLAY" ]; then
     [ -f "$cand/dev-qt/qtbase/qtbase-6.11.0.ebuild" ] && { OVERLAY="$cand"; break; }
   done
 fi
-BACKUP="${QT_DEBUNDLE_BACKUP:-$PROJ_ROOT/qt-vendor-backup}"
-STAGE_DIR="${QT_DEBUNDLE_STAGE:-$PROJ_ROOT/../temps/qt-stage}"
+BACKUP="${QT_DEBUNDLE_BACKUP:-$DEF_BACKUP}"
+STAGE_DIR="${QT_DEBUNDLE_STAGE:-$DEF_STAGE}"
 QT_EBUILD="$OVERLAY/dev-qt/qtbase/qtbase-6.11.0.ebuild"
 B=/opt/max/lib64
 IMAGE=/var/tmp/portage/dev-qt/qtbase-6.11.0/image/usr/lib64
@@ -72,8 +83,7 @@ image_ready() {
 # CMAKE_FIND_ROOT_PATH + MODE_PACKAGE=ONLY (только он!), явные -DQt6*_DIR.
 SVG_SRC=""
 SVG_IMAGE=/var/tmp/portage/dev-qt/qtsvg-6.11.0/image/usr/lib64
-STAGE_DIR="$PROJ_ROOT/../temps/qt-stage"
-S="${QT_DEBUNDLE_WORK:-$PROJ_ROOT/../temps}"   # рабоч. каталог сборки (src/build/install qtsvg)
+S="${QT_DEBUNDLE_WORK:-$DEF_WORK}"   # рабоч. каталог сборки (src/build/install qtsvg)
 build_svg() {
   local dist qtsvg_tar
   qtsvg_tar="$(sudo -n find /home /var/cache -name 'qtsvg-everywhere-src-6.11.0.tar.xz' 2>/dev/null | head -1)"

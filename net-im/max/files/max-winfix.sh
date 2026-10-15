@@ -22,17 +22,17 @@
 #      главное окно принадлежит comm="max", служебные — comm="max-service".
 #   2) Одного _NET_WM_STATE_SKIP_TASKBAR НЕ ХВАТАЕТ: пока на окне висит
 #      _XEMBED_INFO, панель считает его трей-иконкой и показывает вопреки
-#      SKIP_TASKBAR (замерено). Плитка уходит только после СНЯТИЯ _XEMBED_INFO
-#      вместе с типом DOCK (как у conky, который панель не показывает).
-#      Тип UTILITY не помогает — панель его игнорирует.
+#      SKIP_TASKBAR (замерено). Плитка уходит именно после СНЯТИЯ
+#      _XEMBED_INFO; тип окна (DOCK/UTILITY/NORMAL) роли НЕ играет —
+#      проверено: при снятом _XEMBED_INFO панель чистая и с NORMAL.
+#      (Тип DOCK из r22 убран: он не нужен и даёт лишний риск — compiz
+#      держит DOCK-слой поверх всех окон.)
 #
 # РЕШЕНИЕ: watcher (запускается обёрткой /usr/bin/max перед exec основного
 #   бинаря) находит все окна, чей процесс-владелец — max-service, и:
 #     * снимает _XEMBED_INFO (-remove), чтобы окно не считалось трей-иконкой;
-#     * ставит _NET_WM_WINDOW_TYPE_DOCK — панель такие окна не показывает,
-#       Compiz не декорирует;
 #     * ставит _NET_WM_STATE_SKIP_TASKBAR + SKIP_PAGER.
-#   Главное окно (comm=max) не трогается.
+#   Тип окна не трогаем. Главное окно (comm=max) не трогается.
 #
 # Аргумент: PID основного процесса max (watcher выходит, когда тот умирает).
 # Молча завершается, если нет X, xprop/xwininfo или /proc — обёртка не должна
@@ -58,23 +58,17 @@ while [ "$i" -lt 120 ]; do
 		comm=$(cat "/proc/$pid/comm" 2>/dev/null)
 		case "$comm" in
 		max-service)
-			# уже в нужном виде? (проверяем ВСЁ, а не только SKIP_TASKBAR:
-			# одно лишь _NET_WM_STATE не даёт эффекта при живом _XEMBED_INFO)
-			type=$(xprop -id "$w" _NET_WM_WINDOW_TYPE 2>/dev/null)
+			# уже обработано? (xembed снят И state стоит — тип окна не важен)
 			xem=$(xprop -id "$w" _XEMBED_INFO 2>/dev/null)
 			st=$(xprop -id "$w" _NET_WM_STATE 2>/dev/null)
-			case "$type$st" in
-			*DOCK*SKIP_TASKBAR*)
-				case "$xem" in ""*|*"not found"*) continue ;; esac
+			case "$st" in
+			*SKIP_TASKBAR*)
+				case "$xem" in ""|*"not found"*) continue ;; esac
 				;;
 			esac
 			# снять _XEMBED_INFO: без этого окно считается трей-иконкой и
-			# панель показывает его вопреки SKIP_TASKBAR
+			# панель показывает его вопреки SKIP_TASKBAR (корень проблемы)
 			xprop -id "$w" -remove _XEMBED_INFO 2>/dev/null
-			# DOCK: панель такие окна не показывает, Compiz не декорирует
-			xprop -id "$w" -f _NET_WM_WINDOW_TYPE 32a \
-				-set _NET_WM_WINDOW_TYPE \
-				_NET_WM_WINDOW_TYPE_DOCK 2>/dev/null
 			xprop -id "$w" -f _NET_WM_STATE 32a \
 				-set _NET_WM_STATE \
 				_NET_WM_STATE_SKIP_TASKBAR,_NET_WM_STATE_SKIP_PAGER 2>/dev/null

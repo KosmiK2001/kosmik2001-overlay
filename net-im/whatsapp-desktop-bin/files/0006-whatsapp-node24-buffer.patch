@@ -1,0 +1,11 @@
+--- a/opt/whatsapp-desktop/resources/app/main.js
++++ b/opt/whatsapp-desktop/resources/app/main.js
+@@ -198,7 +198,7 @@
+ 
+                 var imgpath = config.get("background-image")
+                 if (imgpath != undefined) {
+-                    var img = new Buffer(fs.readFileSync(imgpath)).toString('base64')
++                    var img = Buffer.from(fs.readFileSync(imgpath)).toString('base64')
+                     var opacity = parseFloat(config.get("background-opacity"))/100.0
+                     var mime = (imgpath.endsWith(".jpg") || imgpath.endsWith(".jpeg"))?"image/jpg":
+                         ((imgpath.endsWith(".png")?"image/png":((imgpath.endsWith(".gif")?"image/gif":""))))

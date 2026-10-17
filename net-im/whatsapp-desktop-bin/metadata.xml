@@ -10,6 +10,6 @@
 		<name>kosmik2001</name>
 	</maintainer>
 	<use>
-		<flag name="tray-toggle">Make the tray icon toggle the main window on click (show when hidden, hide when visible) — mirrors the Viber tray-toggle patch. NOTE: on this app (Electron 17 + libappindicator over the MATE SNI tray) the left click does NOT reach the app at all (the SNI item lacks the "Activate" method), so on Linux the right-click tray menu (Show/Hide/Quit) is the working interaction; the toggle handlers apply on platforms where click events are delivered.</flag>
+		<flag name="tray-toggle">Make the tray icon toggle the main window on left click (show when hidden, hide when visible), like Viber. Works natively on the Electron 44 runtime (0.5.4-r1): its SNI tray implements the Activate method. On the legacy 0.5.4 ebuild (Electron 17 + libappindicator) left clicks never reach the app, so there the flag is inert and the right-click menu is the interaction.</flag>
 	</use>
 </pkgmetadata>

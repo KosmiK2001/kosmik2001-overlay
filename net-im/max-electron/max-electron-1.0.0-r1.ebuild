@@ -117,7 +117,16 @@ src_install() {
 	#    трафик российского неблокируемого мессенджера через VPN-инфраструктуру
 	#    — ровно то, чего проект избегает. Приложение дублирует тот же запрет
 	#    изнутри (applyProxy -> mode 'direct'), но окружение чище снять здесь.
-	# 2) Уход из мёртвого cwd (каталог пересоздан под ногами) — иначе
+	# 2) D-Bus: уважаем НАСЛЕДОВАННУЮ сессионную шину, если она жива. На этой
+	#    машине их ДВЕ: реальная шина MATE-сессии — /tmp/dbus-* (на ней
+	#    mate-notification-daemon, mate-panel, вся декстоп-жизнь), а
+	#    /run/user/$(id -u)/bus — отдельная systemd-user-шина. Безусловный
+	#    форс /run (паттерн обёртки Qt-клиента, лечивший мёртвую шину в ssh)
+	#    уводил Electron на чужую шину: уведомления падали с
+	#    «StartServiceByName … exited with status 1» (проверено notify-send:
+	#    /tmp rc=0, /run — ошибка). Поэтому: живая унаследованная — оставляем;
+	#    мёртвая/отсутствует (ssh, протухший терминал) — фолбэк на /run.
+	# 3) Уход из мёртвого cwd (каталог пересоздан под ногами) — иначе
 	#    Electron падает на старте.
 	dodir /usr/bin
 	{
@@ -126,7 +135,20 @@ src_install() {
 # MAX (Electron) — прямой выход в интернет: не наследуем proxy-окружение.
 unset http_proxy https_proxy ftp_proxy all_proxy no_proxy \
       HTTP_PROXY HTTPS_PROXY FTP_PROXY ALL_PROXY NO_PROXY
-# Запуск из каталога, пересозданного под ногами (mёртвый инод): надёжный
+# D-Bus: наследуем живую сессионную шину; фолбэк на systemd-user — только
+# если унаследованная мертва (ssh/старый терминал). Проверка — ListNames
+# с таймаутом: на мёртвой шине он не пройдёт.
+if [ -n "$DBUS_SESSION_BUS_ADDRESS" ]; then
+	timeout 3 gdbus call --session --dest org.freedesktop.DBus \
+		--object-path /org/freedesktop/DBus \
+		--method org.freedesktop.DBus.ListNames >/dev/null 2>&1 ||
+		unset DBUS_SESSION_BUS_ADDRESS
+fi
+if [ -z "$DBUS_SESSION_BUS_ADDRESS" ] && [ -S "/run/user/$(id -u)/bus" ]; then
+	export DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/$(id -u)/bus"
+fi
+[ -d "/run/user/$(id -u)" ] && export XDG_RUNTIME_DIR="/run/user/$(id -u)"
+# Запуск из каталога, пересозданного под ногами (мёртвый инод): надёжный
 # признак — суффикс "(deleted)" у /proc/self/cwd; "[ -d $PWD]" не ловит.
 case "$(readlink /proc/self/cwd 2>/dev/null)" in
 	*'(deleted)') cd "$HOME" 2>/dev/null || cd / ;;

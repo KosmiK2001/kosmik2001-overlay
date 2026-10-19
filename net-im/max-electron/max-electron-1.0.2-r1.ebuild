@@ -36,7 +36,16 @@ LICENSE="
 "
 SLOT="0"
 KEYWORDS="~amd64"
-IUSE=""
+IUSE="gpu_decode"
+
+# VIDEO_CARDS — USE_EXPAND. Как в media-libs/mesa: перечисляем ВСЕ возможные
+# карты жёстко (в фазе metadata глобальный ${VIDEO_CARDS} не подставлен),
+# затем раскрываем в IUSE. На зависимости влияет только nvidia
+# (nvidia-vaapi-driver); amd/intel/nouveau — без доп. зависимостей.
+VIDEO_CARDS="asahi d3d12 freedreno i915 imagination intel lavapipe lima nouveau nvk panfrost r300 r600 radeon radeonsi v3d vc4 virgl vivante vmware zink nvidia"
+for _card in ${VIDEO_CARDS}; do
+	IUSE+=" video_cards_${_card}"
+done
 
 # strip ломает prebuilt-ELF рантайма; бинарники непереносимы (mirror)
 RESTRICT="strip mirror"
@@ -79,6 +88,37 @@ RDEPEND="
 	x11-themes/hicolor-icon-theme
 "
 
+# --- USE=gpu_decode: аппаратное декодирование видео (VA-API) ---
+# ЧЕСТНО про кодирование: аппаратного ENCODE через VA-API на NVIDIA не
+# существует (nvidia-vaapi-driver — NVDEC-only, vainfo не отдаёт ни одного
+# EncSlice), на AMD/Intel — есть (VCN/QuickSync). Поэтому флаг называется
+# gpu_decode, а не gpu_accel.
+#
+# Зависимости по VIDEO_CARDS (USE_EXPAND), без хардкода:
+#   * media-libs/libva          — база, нужна всем вендорам.
+#   * nvidia-vaapi-driver       — ТОЛЬКО под video_cards_nvidia (сторонний
+#     NVDEC-мост; в дереве под ~amd64). На AMD/Intel он не нужен и вреден.
+#   * AMD (radeonsi) / Intel:   VA-драйвер идёт из media-libs/mesa[vaapi]
+#     / media-libs/libva-intel-media-driver — их тянет сам стек mesa/intel,
+#     отдельной зависимости здесь не добавляем (mesa уже в RDEPEND).
+#   * nouveau:                  аппаратного decode через VA-API нет вовсе,
+#     флаг не даст ничего (честный софт-фолбэк), ничего не сломает.
+#
+# ВАЖНО (эмпирика 2026-10-19): на prebuilt-Electron VA-API decode на NVIDIA
+# заблокирован на уровне Chromium — vaapi_wrapper.cc:130 «Should skip nVidia
+# device named: nvidia-drm» (issuetracker.google.com/issues/563089591).
+# VaapiIgnoreDriverChecks этот скип НЕ снимает (он обходит проверку версии
+# драйвера, а не скип по имени устройства) — проверено на GTX 970. Для AMD/
+# Intel флаг работает штатно; для NVIDIA готовит корректное окружение и
+# заработает, как только Chromium разрешит NVIDIA (или на собственном билде
+# движка с патчем).
+RDEPEND+="
+	gpu_decode? (
+		media-libs/libva
+		video_cards_nvidia? ( media-libs/nvidia-vaapi-driver )
+	)
+"
+
 src_unpack() {
 	# default_src_unpack умеет сам: .tar.gz -> распаковка, .zip -> unzip
 	# (BDEPEND app-arch/unzip). Дерево приложения ляжет в
@@ -105,6 +145,13 @@ src_install() {
 	# --- наш код приложения ---
 	insinto "${DEST}/resources"
 	doins -r "${WORKDIR}/max-electron-${PV}/app" || die
+
+	# --- USE=gpu_decode: маркер для обёртки (не хардкодим LIBVA_DRIVER_NAME:
+	# libva сам выбирает драйвер по вендору — nvidia_drv_video.so на NVIDIA,
+	# radeonsi/intel на AMD/Intel) ---
+	if use gpu_decode; then
+		touch "${D}${DEST}/.gpu-decode" || die
+	fi
 
 	# chrome-sandbox требует setuid-бита
 	fperms 4755 "${DEST}"/chrome-sandbox
@@ -153,7 +200,16 @@ fi
 case "$(readlink /proc/self/cwd 2>/dev/null)" in
 	*'(deleted)') cd "$HOME" 2>/dev/null || cd / ;;
 esac
-exec /opt/max-electron/max-electron "$@"
+# USE=gpu_decode: аппаратное декодирование видео (VA-API). Маркер кладёт
+# ebuild при включённом флаге. LIBVA_DRIVER_NAME не задаём — libva сам
+# находит драйвер по вендору GPU. disable-gpu-sandbox нужен, чтобы GPU-процесс
+# дотянулся до /dev/dri; это осознанное, точечное ослабление песочницы (только
+# GPU), сетевая/файловая изоляция не трогаются.
+GPU_ARGS=""
+if [ -f /opt/max-electron/.gpu-decode ]; then
+	GPU_ARGS="--enable-features=VaapiVideoDecoder,VaapiIgnoreDriverChecks,AcceleratedVideoDecodeLinuxGL --disable-gpu-sandbox"
+fi
+exec /opt/max-electron/max-electron $GPU_ARGS "$@"
 BASE
 	} > "${D}/usr/bin/max-electron" || die
 	fperms 0755 /usr/bin/max-electron
@@ -177,6 +233,13 @@ pkg_postinst() {
 	elog "Запуск: max-electron (или пункт меню MAX). Трафик — напрямую:"
 	elog "обёртка снимает proxy-переменные, приложение дублирует mode 'direct'."
 	elog "Конфиг (трей/прокси/геометрия): ~/.config/max-electron/config.json."
+	if use gpu_decode; then
+		elog "USE=gpu_decode ВКЛЮЧЕН: аппаратное декодирование видео через VA-API."
+		elog "  NVIDIA: только decode (nvidia-vaapi-driver), и в prebuilt-Electron"
+		elog "  он заблокирован хардкодом Chromium — декодер останется программным."
+		elog "  AMD/Intel: decode+encode работают штатно (VCN/QuickSync)."
+		elog "  Ослаблена ТОЛЬКО GPU-песочница (--disable-gpu-sandbox), остальная изоляция не тронута."
+	fi
 }
 
 pkg_postrm() {

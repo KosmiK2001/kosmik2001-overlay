@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE pkgmetadata SYSTEM "https://www.gentoo.org/dtd/metadata.dtd">
+<pkgmetadata>
+	<maintainer type="person">
+		<name>kosmik2001</name>
+	</maintainer>
+	<longname>MAX Messenger desktop client (Electron wrapper for web.max.ru)</longname>
+	<upstream>
+		<remote-id type="github">KosmiK2001/max-electron</remote-id>
+	</upstream>
+</pkgmetadata>

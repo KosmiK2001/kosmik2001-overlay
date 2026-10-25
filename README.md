@@ -47,7 +47,10 @@ sudo emerge --ask x11-misc/fusion-icon2
 В оверлее лежит набор `-9999` ebuild'ов для MATE: весь `mate-base`, установочный
 `mate-extra`, `x11-wm/marco`, `x11-misc/{mate-notification-daemon,mozo}`,
 `x11-terms/mate-terminal`, `x11-themes/{mate-icon-theme,mate-backgrounds}`,
-`app-arch/engrampa`, `app-editors/pluma`, `app-text/atril`, `media-gfx/eom`.
+`app-arch/engrampa`, `app-editors/pluma`, `app-text/atril`, `media-gfx/eom`,
+ плюс `dev-python/python-caja` (привязки Python для расширений Caja) и
+`mate-extra/caja-admin` (апстрим — `github.com/infirit/caja-admin`, не
+mate-desktop).
 
 Каждый снят с самого свежего релизного ebuild'а из `::gentoo` (его PV указан в
 шапке файла) без изменений в зависимостях, USE-флагах, аргументах configure и
@@ -68,6 +71,18 @@ sudo emerge --ask x11-misc/fusion-icon2
 
 Подмодуль `mate-submodules` (`mate-panel`, `mate-session-manager`, `mate-utils`,
 `caja`) в live-версиях тянет `git-r3`, отдельный тарбокс больше не нужен.
+
+### Теневые `-r1` для python3_14 (`python-caja`, `caja-admin`)
+
+Оба пакета в `::gentoo` объявлены как `PYTHON_COMPAT=( python3_{11..13} )`, а
+система собрана с единственным `PYTHON_SINGLE_TARGET=python3_14` —
+`REQUIRED_USE="${PYTHON_REQUIRED_USE}"` не выполняется, пакет неустанавливаем.
+В оверлее лежат копии тех же ebuild'ов с `python3_{11..14}` (релизный `-r1` и
+`9999`), остальное без изменений. Проверено на 3.14.7: `python-caja`
+конфигурируется на 3.14 (`Python version ... 3.14`), `libcaja-python.so` линкуется с
+`libpython3.14.so.1.0`, расширение `caja-admin.py` байткомпилится
+(`cpython-314.pyc`) и загружается с настоящим `Caja`-typelib (GInterface
+`MenuProvider` разрешается). Удалить эти файлы, когда апстрим поднимет диапазон.
 
 ### Установка одного пакета
 

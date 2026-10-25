@@ -148,3 +148,18 @@ FEATURES="splitdebug keepdebug"
 sudo ebuild /var/db/repos/kosmik2001/mate-base/mate-panel/mate-panel-9999.ebuild clean unpack compile
 # результат в /var/tmp/portage/mate-base/mate-panel-9999/work/, система не тронута
 ```
+
+Пересобрать и поставить уже установленный live-пакет (PV тот же — `emerge -1`
+скажет «0 of 0», ничего не сделает):
+
+```bash
+sudo ebuild /var/db/repos/kosmik2001/mate-base/mate-panel/mate-panel-9999.ebuild clean install qmerge
+```
+
+### Порядок первой сборки
+
+`mate-common-9999` — фундамент: он ставит `/usr/bin/mate-doc-common`,
+`mate-autogen` и m4-макросы в `aclocal`, без которых `mate.eclass` на фазе
+`prepare` падает с `mate-doc-common: command not found` (для `PV=9999` он
+принудительно гоняет `ematedocize`). Поэтому первым — `mate-common-9999`, и
+только потом остальное.

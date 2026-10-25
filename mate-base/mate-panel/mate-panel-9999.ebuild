@@ -31,6 +31,15 @@ IUSE="+X +introspection wayland"
 
 REQUIRED_USE="|| ( X wayland )"
 
+# Wayland-бэкенд в master переехал на libxfce4windowing: configure.ac проверяет
+# «gtk-layer-shell-0 wayland-client», затем «libxfce4windowing-0 >= 4.20.2» и при
+# --enable-wayland падает с
+#   configure: error: Wayland support requires libxfce4windowing-0 >= 4.20.2
+# В релизном 1.28 этой зависимости ещё нет — отсюда отличие от ::gentoo.
+# XFW используется только в applets/wncklet/wayland-*.c под ENABLE_WAYLAND,
+# поэтому зависимость строго под флагом wayland; [wayland] — чтобы у самой XFW
+# был собран нужный бэкенд.
+
 COMMON_DEPEND="
 	>=app-accessibility/at-spi2-core-2.46.0:2
 	>=dev-libs/glib-2.50:2
@@ -54,7 +63,11 @@ COMMON_DEPEND="
 		>=x11-libs/libXrandr-1.3
 	)
 	introspection? ( >=dev-libs/gobject-introspection-1.82.0-r2:= )
-	wayland? ( gui-libs/gtk-layer-shell )
+	wayland? (
+		gui-libs/gtk-layer-shell
+		dev-libs/wayland
+		>=xfce-base/libxfce4windowing-4.20.2[wayland]
+	)
 "
 
 RDEPEND="${COMMON_DEPEND}

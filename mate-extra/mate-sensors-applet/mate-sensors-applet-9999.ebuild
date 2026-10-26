@@ -23,7 +23,10 @@ LICENSE="FDL-1.1+ GPL-2+"
 SLOT="0"
 KEYWORDS="**"
 
-IUSE="+dbus hddtemp libnotify lm-sensors video_cards_nvidia"
+IUSE="+dbus hddtemp in-process libnotify lm-sensors video_cards_nvidia"
+
+# in-process: --enable-in-process. Нужен под Wayland — out-of-process апплеты
+# там не поддерживаются (libmate-panel-applet: «only supported on X11»).
 
 COMMON_DEPEND="
 	>=dev-libs/glib-2.50:2
@@ -64,5 +67,6 @@ src_configure() {
 		$(use_enable libnotify) \
 		$(use_with lm-sensors libsensors) \
 		$(use_with video_cards_nvidia nvidia) \
+		$(use_enable in-process) \
 		${udisks}
 }

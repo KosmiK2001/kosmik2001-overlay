@@ -94,6 +94,12 @@ src_configure() {
 		$(use_enable X x11)
 		$(use_enable introspection)
 		$(use_enable wayland)
+		# Апплеты панели (clock, fish, notification-area, wncklet) по умолчанию
+		# собираются out-of-process, а это X11-only: под Wayland панель падает с
+		#   "Requested out-of-process applet, which is only supported on X11"
+		# и фабрика апплета завершается со статусом 1. In-process сборка
+		# работает и на X11, и на Wayland.
+		--with-in-process-applets=$(usex wayland all none)
 	)
 
 	mate_src_configure \

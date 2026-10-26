@@ -61,7 +61,8 @@ src_configure() {
 	mate_src_configure \
 		$(use_enable nls) \
 		$(use_enable X x11) \
-		$(use_enable wayland)
+		$(use_enable wayland) \
+		$(use_enable wayland in-process)
 }
 
 src_install() {

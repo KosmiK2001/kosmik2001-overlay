@@ -58,5 +58,6 @@ DEPEND="${COMMON_DEPEND}
 
 src_configure() {
 	mate_src_configure \
-		$(use_enable wayland)
+		$(use_enable wayland) \
+		$(use_enable wayland in-process)
 }

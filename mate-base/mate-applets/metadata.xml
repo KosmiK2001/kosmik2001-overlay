@@ -14,6 +14,10 @@
 			Enable support for cpu frequency manipulation using <pkg>sys-power/cpupower</pkg>
 		</flag>
 		<flag name="netlink">Use <pkg>dev-libs/libnl</pkg></flag>
+		<flag name="in-process">Build the applets in-process
+		(--enable-in-process). Required for Wayland: out-of-process applets are
+		X11-only and the applet factory exits with status 1 under a Wayland
+		compositor.</flag>
 	</use>
 	<upstream>
 		<remote-id type="github">mate-desktop/mate-applets</remote-id>

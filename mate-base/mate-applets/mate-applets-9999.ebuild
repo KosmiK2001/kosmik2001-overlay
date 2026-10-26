@@ -20,7 +20,12 @@ LICENSE="CC-BY-SA-3.0 FDL-1.1+ GPL-2+ GPL-3+ LGPL-2+"
 SLOT="0"
 KEYWORDS="**"
 
-IUSE="X +cpupower netlink policykit +upower"
+IUSE="X +cpupower in-process netlink policykit +upower"
+
+# in-process: собрать апплеты внутрь процесса панели (--enable-in-process).
+# Требуется под Wayland: out-of-process апплеты там не поддерживаются вообще
+# (libmate-panel-applet: «only supported on X11»), фабрика падает со статусом 1.
+# На X11 in-process тоже работает — теряется только изоляция падений.
 
 REQUIRED_USE="policykit? ( cpupower )"
 
@@ -73,6 +78,7 @@ src_configure() {
 		$(use_with netlink nl)
 		$(use_enable policykit polkit)
 		$(use_with upower)
+		$(use_enable in-process)
 	)
 
 	# configure.ac logic is a little hinky

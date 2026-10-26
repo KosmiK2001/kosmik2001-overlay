@@ -90,5 +90,6 @@ src_configure() {
 		$(use_enable applet gdict-applet) \
 		$(use_enable nls) \
 		$(use_enable udisks disk_image_mounter) \
-		$(use_enable wayland)
+		$(use_enable wayland) \
+		$(use_enable wayland in-process)
 }

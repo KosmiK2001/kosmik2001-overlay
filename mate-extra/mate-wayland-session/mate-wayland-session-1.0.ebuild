@@ -16,9 +16,13 @@ S="${WORKDIR}"
 RDEPEND="
 	gui-wm/labwc
 	>=mate-base/mate-panel-1.28[wayland]
+	>=mate-base/mate-applets-1.28[in-process]
+	>=mate-base/caja-1.28[wayland]
+	>=mate-base/mate-settings-daemon-1.28[wayland]
+	>=mate-extra/mate-media-1.28[wayland]
+	>=mate-extra/mate-utils-1.28[wayland]
+	>=mate-extra/mate-sensors-applet-1.28[in-process]
 	>=x11-misc/mate-notification-daemon-1.28[wayland]
-	mate-base/mate-settings-daemon
-	mate-base/caja
 	mate-extra/mate-polkit
 "
 

@@ -5,9 +5,14 @@
 # запускает оконный менеджер (marco) и не умеет корректно завершать
 # Wayland-сессию. Это как раз одна из вещей, которую надо патчить, — а пока
 # сессией управляет композитор.
+#
+# ВАЖНО: пути абсолютные. В Gentoo mate-settings-daemon,
+# mate-notification-daemon и mate-polkit лежат в /usr/libexec, а не в /usr/bin:
+# по имени из PATH они не находятся и молча не стартуют (в журнале — только
+# «command not found» от sh).
 
-mate-settings-daemon &
+/usr/libexec/mate-settings-daemon &
 mate-panel &
 caja -n &
-mate-notification-daemon &
-mate-polkit &
+/usr/libexec/mate-notification-daemon &
+/usr/libexec/polkit-mate-authentication-agent-1 &

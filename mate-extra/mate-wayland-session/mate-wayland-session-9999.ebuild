@@ -37,6 +37,19 @@ PATCHES=(
 	"${FILESDIR}"/${PN}-9999-gentoo-wayfire-ini-path.patch
 )
 
+src_install() {
+	meson_src_install
+
+	# Пункты в меню DM нумеруем: сессий четыре, и различать их по длинному
+	# описанию в списке неудобно. Номера закреплены за конкретными сессиями.
+	if [ -d "${D}"/usr/share/wayland-sessions ]; then
+		sed -i \
+			-e 's|^Name=MATE (Wayland)$|Name=1. MATE (Wayland)|' \
+			-e 's|^Name=MATE (Wayland, без менеджера сеанса)$|Name=4. MATE (Wayland, без менеджера сеанса)|' \
+			"${D}"/usr/share/wayland-sessions/*.desktop || die
+	fi
+}
+
 src_prepare() {
 	# Два wayfire-сеанса ставят одинаковое имя «MATE (Wayland)»: этот и
 	# mate-wayland.desktop из PR mate-session-manager#340. В меню DM их не

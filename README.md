@@ -250,22 +250,63 @@ mate-extra/mate-sensors-applet in-process
 менеджер (`marco`, через `data/mate-wm`) и не умеет завершать Wayland-сессию —
 в master нет ни одной ветки кода на `XDG_SESSION_TYPE=wayland`, кроме
 регистрации в logind. Компоненты поднимает `autostart` композитора
-(`/usr/share/mate-wayland/labwc/autostart`): `mate-settings-daemon`,
-`mate-panel`, `caja -n`, `mate-notification-daemon`, `mate-polkit`.
+(`/usr/share/mate-wayland/labwc/autostart`).
 
-Выход из сессии — `labwc --exit` (или Ctrl+Alt+Backspace, если включён в
-`rc.xml`). Кнопка «Выход» в панели вызывает `mate-session-save` и без
-`mate-session` работать не будет — это одна из задач для патча.
+Выход из сессии — `labwc --exit`. Кнопка «Выход» в панели вызывает
+`mate-session-save` и без `mate-session` работать не будет.
+
+**Пути только абсолютные**: `mate-settings-daemon`, `mate-notification-daemon`
+и `polkit-mate-authentication-agent-1` лежат в `/usr/libexec`, не в `/usr/bin`.
+Вызов по имени из autostart даёт молчаливый `command not found`, и половина
+сессии не поднимается, при этом сама сессия выглядит живой.
+
+### Что проверено headless-прогоном
+
+Запуск без DRM (`WLR_BACKENDS=headless WLR_RENDERER=pixman`), чтобы не трогать
+рабочую сессию:
+
+```bash
+export XDG_RUNTIME_DIR=/tmp/xdg-wl-test && mkdir -p $XDG_RUNTIME_DIR
+WLR_BACKENDS=headless WLR_RENDERER=pixman \
+  dbus-run-session -- labwc -C /usr/share/mate-wayland/labwc
+```
+
+Живыми поднимаются: `labwc`, `/usr/libexec/mate-settings-daemon`, `mate-panel`,
+`/usr/libexec/mate-notification-daemon`,
+`/usr/libexec/polkit-mate-authentication-agent-1`, `caja -n` (см. ниже),
+порталы, gvfs, at-spi, dconf, keyring.
+
+Апплеты действительно грузятся in-process — видно по карте памяти панели:
+
+```
+$ grep -oE "/usr/[^ ]*\.so" /proc/$(pgrep -x mate-panel)/maps | grep applet
+/usr/lib64/mate-panel/libclock-applet.so
+/usr/lib64/mate-panel/libnotification-area-applet.so
+/usr/lib64/mate-panel/libwnck-applet.so
+```
 
 ### Известные дыры (то, что и надо патчить)
 
 - `mate-session-manager` — нет Wayland-режима: старт WM, logout, autostart.
+  Без него на шине нет `org.gnome.SessionManager`, и это видно по журналу:
+  `mate-settings-daemon` не может ни зарегистрировать клиента, ни выставить
+  `QT_FONT_DPI`/`QT_SCALE_FACTOR`, `GrabMediaPlayerKeys` не работает;
+  `polkit-mate-authentication-agent-1` тоже не регистрируется. То есть
+  `mate-session` нужен не только для logout — на нём висит интеграция демонов.
 - `marco` — X11-only, под Wayland не запускается вообще (WM = композитор).
 - `mate-screensaver` — X11-only (`XScreenSaver` extension).
 - `mate-desktop` (`mate-bg`) — фон рисуется через X11/Xrandr.
-- `caja` в режиме рабочего стола (`caja` без `-n`) — нет Wayland-пути.
+- `caja -n` — стартует и сразу выходит (нет рабочего стола на Wayland), поэтому
+  ни файлового менеджера-демона, ни иконок на рабочем столе. `caja` без `-n`
+  под Wayland пути не имеет вовсе.
 - Апплеты — только in-process (см. выше); out-of-process на Wayland не
   поддерживается в принципе, и это надо чинить в `libmate-panel-applet`
   (D-Bus-фабрика + `panel-applet-container`), иначе сторонние апплеты
-  (sensors, indicator, сторонние .so) под Wayland не завести.
+  (sensors, indicator, сторонние .so) под Wayland не завести. Три апплета
+  остаются out-of-process и на Wayland не загрузятся: `BrightnessApplet`,
+  `InhibitApplet`, `PowerProfilesApplet` — они из `mate-power-manager`, у
+  которого нет ключа `--enable-in-process`.
+- `libxfce4windowing`: `Window<->Workspace association is not available on your
+  compositor` — labwc не реализует `ext-workspace-v1`, поэтому связка
+  окно↔рабочее место в `window-list`/`workspace-switcher` деградирует.
 

@@ -353,12 +353,16 @@ $ grep -oE "/usr/[^ ]*\.so" /proc/$(pgrep -x mate-panel)/maps | grep applet
 
 | пункт в sddm | пакет | композитор | менеджер сеанса | «Выход» в панели |
 |---|---|---|---|---|
-| **MATE (Wayland)** | `mate-base/mate-session-manager-9999` + PR #340 | wayfire | `mate-session` | работает |
-| MATE (Wayland, без менеджера сеанса) | `mate-extra/mate-wayland-session-9999` | wayfire | нет | не работает |
-| MATE on Wayland (labwc) | `mate-extra/mate-wayland-session-labwc` | labwc | `mate-session` + заглушка WM | работает, но фаза startup ~30 с |
-| MATE (Wayland, dev-сборка) | `mate-extra/mate-wayland-dev-session` | wayfire | `mate-session` | работает — тот же `startmatewayland`, но из `~/mate-dev` |
+| **1. MATE (Wayland)** | `mate-base/mate-session-manager-9999` + PR #340 | wayfire | `mate-session` | работает |
+| 4. MATE (Wayland, без менеджера сеанса) | `mate-extra/mate-wayland-session-9999` | wayfire | нет | не работает |
+| 3. MATE (Wayland, labwc) | `mate-extra/mate-wayland-session-labwc` | labwc | `mate-session` + заглушка WM | работает, но фаза startup ~30 с |
+| 2. MATE (Wayland, dev-сборка) | `mate-extra/mate-wayland-dev-session` | wayfire | `mate-session` | работает — тот же `startmatewayland`, но из `~/mate-dev` |
 
-**Выбор: «MATE (Wayland)»** — это апстрим-PR
+Номера закреплены за конкретными сессиями и стоят в поле `Name=` — в списке
+SDDM они идут по порядку 1→4, и переключаться между ними для проверки глазами
+можно не читая описаний.
+
+**Выбор: «1. MATE (Wayland)»** — это апстрим-PR
 [mate-session-manager#340](https://github.com/mate-desktop/mate-session-manager/pull/340),
 наложенный на live-ebuild. Он делает то же, что наша labwc-сессия, но
 внутри `mate-session`.

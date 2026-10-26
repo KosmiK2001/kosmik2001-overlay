@@ -67,7 +67,11 @@ build_one() {
 	[ -d "$img" ] || die "нет образа: $img"
 
 	# без --delete: иначе затрём файлы других пакетов, уже лежащих в префиксе
-	rsync -aH "$img"/ "$PREFIX"/ || die "rsync упал"
+	if command -v rsync >/dev/null 2>&1; then
+		rsync -aH "$img"/ "$PREFIX"/ || die "rsync упал"
+	else
+		cp -a "$img"/. "$PREFIX"/ || die "cp -a упал"
+	fi
 	local n
 	n=$(find "$img" -type f | wc -l)
 	echo "    установлено файлов: $n → $PREFIX"

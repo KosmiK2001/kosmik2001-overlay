@@ -15,7 +15,6 @@ S="${WORKDIR}"
 RDEPEND="
 	gui-wm/wayfire
 	>=mate-base/mate-session-manager-1.28
-	app-misc/rsync
 "
 
 src_install() {

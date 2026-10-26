@@ -354,9 +354,9 @@ $ grep -oE "/usr/[^ ]*\.so" /proc/$(pgrep -x mate-panel)/maps | grep applet
 | пункт в sddm | пакет | композитор | менеджер сеанса | «Выход» в панели |
 |---|---|---|---|---|
 | **1. MATE (Wayland)** | `mate-base/mate-session-manager-9999` + PR #340 | wayfire | `mate-session` | работает |
-| 4. MATE (Wayland, без менеджера сеанса) | `mate-extra/mate-wayland-session-9999` | wayfire | нет | не работает |
-| 3. MATE (Wayland, labwc) | `mate-extra/mate-wayland-session-labwc` | labwc | `mate-session` + заглушка WM | работает, но фаза startup ~30 с |
 | 2. MATE (Wayland, dev-сборка) | `mate-extra/mate-wayland-dev-session` | wayfire | `mate-session` | работает — тот же `startmatewayland`, но из `~/mate-dev` |
+| 3. MATE (Wayland, labwc) | `mate-extra/mate-wayland-session-labwc` | labwc | `mate-session` + заглушка WM | работает, но фаза startup ~30 с |
+| 4. MATE (Wayland, без менеджера сеанса) | `mate-extra/mate-wayland-session-9999` | wayfire | нет | не работает |
 
 Номера закреплены за конкретными сессиями и стоят в поле `Name=` — в списке
 SDDM они идут по порядку 1→4, и переключаться между ними для проверки глазами

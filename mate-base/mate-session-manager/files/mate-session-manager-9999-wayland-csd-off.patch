@@ -1,0 +1,46 @@
+diff --git a/wayfire/startmatewayland.in b/wayfire/startmatewayland.in
+index 4544d78..e26c632 100644
+--- a/wayfire/startmatewayland.in
++++ b/wayfire/startmatewayland.in
+@@ -17,6 +17,12 @@
+ # Copyright (C) 2026 MATE Developers
+ 
+ export XDG_SESSION_TYPE=wayland
++
++# MATE is a server-side-decoration desktop, and GTK3 client-side decorations
++# render badly here: the CSD shadow surface is composited as an opaque white
++# halo around every window (wayfire + r600). GTK_CSD=0 makes GTK ask the
++# compositor for decorations instead, which is what MATE expects anyway.
++export GTK_CSD=0
+ [ -n "$XDG_CURRENT_DESKTOP" ] || export XDG_CURRENT_DESKTOP=MATE
+ 
+ # Make sure we have a runtime directory for the Wayland socket.
+diff --git a/wayfire/wayfire.ini.in b/wayfire/wayfire.ini.in
+index ca8005e..e4e96af 100644
+--- a/wayfire/wayfire.ini.in
++++ b/wayfire/wayfire.ini.in
+@@ -47,7 +47,7 @@ vwidth = 4
+ vheight = 1
+ 
+ # Prefer client-side decoration or server-side decoration
+-preferred_decoration_mode = client
++preferred_decoration_mode = server
+ 
+ # MATE dialogs are not forced to be modal.
+ all_dialogs_modal = false
+@@ -175,3 +175,15 @@ toggle = <super> KEY_I
+ # Wayfire turn off the display on its own.
+ [idle]
+ dpms_timeout = 0
++
++# MATE-подобное оформление окон. При preferred_decoration_mode = server
++# декорации рисует wayfire; цвета/высоту заголовка подгоняем под светлую тему
++# MATE (Menta), чтобы окна не отличались от X11-сессии.
++[decoration]
++font = Sans 10
++font_color = #000000ff
++title_height = 26
++border_size = 1
++button_order = minimize maximize close
++active_color = #ecececff
++inactive_color = #dcdcdcff

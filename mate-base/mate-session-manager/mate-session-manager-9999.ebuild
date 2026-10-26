@@ -36,6 +36,11 @@ IUSE="debug elogind gles2 gnome-keyring nls systemd"
 # нужен.
 PATCHES=(
 	"${FILESDIR}"/${PN}-9999-wayland-pr340.patch
+	# GTK3 рисует CSD-тень как непрозрачный белый ореол вокруг окна
+	# (wayfire + r600): GTK_CSD=0 переводит окна на серверные декорации,
+	# что для MATE и так родной режим. Плюс MATE-подобное оформление
+	# декораций wayfire в шаблоне wayfire.ini.
+	"${FILESDIR}"/${PN}-9999-wayland-csd-off.patch
 )
 
 # x11-misc/xdg-user-dirs{,-gtk} are needed to create the various XDG_*_DIRs, and

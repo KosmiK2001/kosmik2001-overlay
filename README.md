@@ -246,14 +246,50 @@ mate-extra/mate-sensors-applet in-process
 в журнале, а не уползает молча в XWayland. Для мягкого сравнения —
 `GDK_BACKEND=wayland,x11` в `/usr/bin/mate-wayland-session`.
 
-`mate-session-manager` в сессии **не участвует**: он всегда запускает оконный
-менеджер (`marco`, через `data/mate-wm`) и не умеет завершать Wayland-сессию —
-в master нет ни одной ветки кода на `XDG_SESSION_TYPE=wayland`, кроме
-регистрации в logind. Компоненты поднимает `autostart` композитора
-(`/usr/share/mate-wayland/labwc/autostart`).
+`mate-session-manager` в сессии **участвует** — иначе завершение сеанса не
+работает в принципе. Кнопка «Выход» в панели не вызывает `mate-session-save`:
+она делает D-Bus-вызов `Logout(u)` на `org.gnome.SessionManager`
+(`mate-panel/libpanel-util/panel-session-manager.c:88`). Это имя берёт
+`mate-session` (`mate-session/main.c:78`), он же раздаёт
+`/etc/xdg/autostart` и обязательные компоненты `panel='mate-panel'`,
+`filemanager='caja'`.
 
-Выход из сессии — `labwc --exit`. Кнопка «Выход» в панели вызывает
-`mate-session-save` и без `mate-session` работать не будет.
+Оконного менеджера в Wayland-сессии нет (WM — композитор), но `mate-session`
+всё равно запускает его через `data/mate-wm`, а тот при пустом
+`org.mate.session.required-components windowmanager` ищет в `PATH` **marco**.
+Поэтому `WINDOW_MANAGER` указывает на `/usr/bin/mate-wayland-wm-stub` —
+заглушку, которая просто висит, пока жива сессия.
+
+После выхода `mate-session` autostart вызывает `labwc --exit`, иначе остаётся
+пустой экран с живым композитором. Если `mate-session` не поднимется,
+компоненты запускаются напрямую — сессия не остаётся пустой, но без
+завершения сеанса.
+
+**Две правки mate-session, без которых он падал с SIGSEGV** на Wayland
+(патч `mate-session-manager-9999-wayland-x11-guards.patch`):
+
+| файл | что было |
+|---|---|
+| `mate-session/msm-gnome.c` | `msm_compat_gnome_smproxy_startup/shutdown` зовут `GDK_DISPLAY_XDISPLAY()` + `RootWindow()` без проверки типа дисплея (smproxy — X11-хак с `GNOME_SM_PROXY` на корневом окне) |
+| `mate-session/gs-idle-monitor.c` | `gs_idle_monitor_constructor` зовёт `_init_xtest()`/`init_xsync()` → `XLockDisplay (GDK_DISPLAY_XDISPLAY (...))`, `XSyncQueryExtension` и т.д. |
+
+Бэктрейс из core снимается так:
+
+```bash
+coredumpctl dump <pid> --output=/tmp/core.ms
+eu-stack --core /tmp/core.ms -e /usr/bin/mate-session
+```
+
+**Фаза startup занимает ~30 с.** Пока `mate-session` не перешёл в фазу
+`Running`, `Logout` отбивается ошибкой
+`org.gnome.SessionManager.NotInRunning: Shutdown interface is only available
+during the Running phase`. Причина — обязательные компоненты: `caja` на
+Wayland не регистрируется как клиент сеанса и не сообщает о готовности, так
+что сессия висит в startup до таймаута. Практический эффект: сразу после
+входа кнопка «Выход» не сработает, через полминуты — работает. Это
+следующая задача для патча (не ждать `filemanager` в Wayland-сессии).
+
+Выход вручную, если понадобится: `labwc --exit`.
 
 **Пути только абсолютные**: `mate-settings-daemon`, `mate-notification-daemon`
 и `polkit-mate-authentication-agent-1` лежат в `/usr/libexec`, не в `/usr/bin`.

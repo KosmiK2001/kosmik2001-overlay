@@ -25,7 +25,7 @@ export MATE_DEV_PREFIX="$PREFIX"
 export PATH="$PREFIX/usr/bin:$PATH"
 export LD_LIBRARY_PATH="$PREFIX/usr/lib64:$PREFIX/usr/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 export XDG_DATA_DIRS="$PREFIX/usr/share:${XDG_DATA_DIRS:-/usr/local/share:/usr/share}"
-export GSETTINGS_SCHEMA_DIR="$PREFIX/usr/share/glib-2.0/schemas"
+export GSETTINGS_SCHEMA_DIR="$PREFIX/usr/share/glib-2.0/schemas${GSETTINGS_SCHEMA_DIR:+:$GSETTINGS_SCHEMA_DIR}"
 export GI_TYPELIB_PATH="$PREFIX/usr/lib64/girepository-1.0${GI_TYPELIB_PATH:+:$GI_TYPELIB_PATH}"
 export GTK_CSD=0
 

@@ -1,0 +1,61 @@
+diff --git a/mate-session/gs-idle-monitor.c b/mate-session/gs-idle-monitor.c
+index 375cf5d..ff21283 100644
+--- a/mate-session/gs-idle-monitor.c
++++ b/mate-session/gs-idle-monitor.c
+@@ -317,6 +317,16 @@ gs_idle_monitor_constructor (GType                  type,
+                                                                                                n_construct_properties,
+                                                                                                construct_properties));
+ 
++        /* Idle monitoring is built on XSync counters and XTest, neither of which
++         * exists on a Wayland display: XLockDisplay (GDK_DISPLAY_XDISPLAY (...))
++         * segfaults the session manager at startup. Skip it there and degrade to
++         * "no idle callbacks" instead of crashing. */
++        if (! GDK_IS_X11_DISPLAY (gdk_display_get_default ())) {
++                g_warning ("GSIdleMonitor: idle monitoring is X11-only, disabled on Wayland "
++                           "(screensaver and idle-based actions will not trigger)");
++                return G_OBJECT (monitor);
++        }
++
+         _init_xtest (monitor);
+ 
+         if (! init_xsync (monitor)) {
+@@ -427,6 +437,11 @@ _xsync_alarm_set (GSIdleMonitor      *monitor,
+         XSyncValue           delta;
+         guint                flags;
+ 
++        if (monitor->counter == None) {
++                /* No XSync counter (Wayland): watch is registered without alarms. */
++                return FALSE;
++        }
++
+         flags = XSyncCACounter
+                 | XSyncCAValueType
+                 | XSyncCATestType
+diff --git a/mate-session/msm-gnome.c b/mate-session/msm-gnome.c
+index ce47b72..20760ac 100644
+--- a/mate-session/msm-gnome.c
++++ b/mate-session/msm-gnome.c
+@@ -99,6 +99,11 @@ msm_compat_gnome_smproxy_startup (void)
+   GdkDisplay *gdkdisplay;
+ 
+   gdkdisplay = gdk_display_get_default ();
++  /* smproxy is an X11-only compatibility hack: GNOME_SM_PROXY is a property on
++   * the X11 root window. On a Wayland display GDK_DISPLAY_XDISPLAY() is invalid
++   * and RootWindow() segfaults the session manager (rc=139 at startup). */
++  if (!GDK_IS_X11_DISPLAY (gdkdisplay))
++    return;
+   gdk_x11_display_error_trap_push (gdkdisplay);
+ 
+   /* Set GNOME_SM_PROXY property, since some apps (like OOo) seem to require
+@@ -132,6 +137,11 @@ msm_compat_gnome_smproxy_shutdown (void)
+   GdkDisplay *gdkdisplay;
+ 
+   gdkdisplay = gdk_display_get_default ();
++  /* smproxy is an X11-only compatibility hack: GNOME_SM_PROXY is a property on
++   * the X11 root window. On a Wayland display GDK_DISPLAY_XDISPLAY() is invalid
++   * and RootWindow() segfaults the session manager (rc=139 at startup). */
++  if (!GDK_IS_X11_DISPLAY (gdkdisplay))
++    return;
+   gdk_x11_display_error_trap_push (gdkdisplay);
+ 
+   if (gnome_smproxy_window != None)

@@ -28,7 +28,7 @@ IUSE="debug elogind gles2 gnome-keyring nls systemd"
 # невалиден, и mate-session падает с SIGSEGV (rc=139) на старте — сессия
 # остаётся без менеджера сеанса, а значит и без завершения сеанса.
 PATCHES=(
-	"${FILESDIR}"/${PN}-9999-wayland-smproxy-guard.patch
+	"${FILESDIR}"/${PN}-9999-wayland-x11-guards.patch
 )
 
 # x11-misc/xdg-user-dirs{,-gtk} are needed to create the various XDG_*_DIRs, and

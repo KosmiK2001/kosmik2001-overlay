@@ -114,4 +114,11 @@ src_install() {
 
 	# This should be done in MATE too, see Gentoo bug #270852
 	newexe "${FILESDIR}"/10-user-dirs-update-mate-r2 10-user-dirs-update-mate
+
+	# Пункты в меню DM нумеруем: Wayland-сессий MATE четыре, и различать их
+	# по длинному описанию в списке неудобно. Эта — основная (PR #340).
+	if [ -d "${D}"/usr/share/wayland-sessions ]; then
+		sed -i -e 's|^Name=MATE (Wayland)$|Name=1. MATE (Wayland)|' \
+			"${D}"/usr/share/wayland-sessions/*.desktop || die
+	fi
 }

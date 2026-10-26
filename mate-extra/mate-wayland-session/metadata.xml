@@ -5,12 +5,19 @@
 		<name>kosmik2001</name>
 	</maintainer>
 	<longdescription>
-		Сессионный файл /usr/share/wayland-sessions/mate-wayland.desktop и
-		обёртка /usr/bin/mate-wayland-session: запускают MATE на Wayland под
-		композитором labwc, без X11-фолбэка (GDK_BACKEND=wayland).
+		Официальная Wayland-сессия MATE из апстрима: /usr/share/wayland-sessions/
+		MATE.desktop, обёртка mate-wayland.sh (копирует дефолтный wayfire.ini в
+		~/.config/mate/wayfire.ini и запускает wayfire) и
+		mate-wayland-components.sh, который поднимает mate-panel, caja -n,
+		mate-settings-daemon, mate-notification-daemon, polkit-агент и
+		gnome-keyring с перезапуском, пока жив композитор.
 
-		mate-session-manager не используется: он всегда запускает оконный
-		менеджер (marco) и не умеет завершать Wayland-сессию. Компоненты
-		поднимает autostart самого композитора.
+		Альтернатива — mate-extra/mate-wayland-session-labwc (своя сессия на
+		labwc с GDK_BACKEND=wayland и mate-session). Обе ставят разные файлы и
+		могут стоять одновременно: в меню DM будут «MATE (Wayland)» и
+		«MATE on Wayland».
 	</longdescription>
+	<upstream>
+		<remote-id type="github">mate-desktop/mate-wayland-session</remote-id>
+	</upstream>
 </pkgmetadata>

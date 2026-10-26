@@ -1,0 +1,15 @@
+diff --git a/session/mate-wayland.sh b/session/mate-wayland.sh
+index d1023dc..64982ac 100755
+--- a/session/mate-wayland.sh
++++ b/session/mate-wayland.sh
+@@ -12,6 +12,10 @@ create_initial_config()
+         #User has not configured wayfire. Look for the default .ini file where the package manager put it
+         WAYFIRE_EXAMPLE=/usr/share/doc/wayfire/examples/wayfire.ini
+         [ -e "$WAYFIRE_EXAMPLE" ] || WAYFIRE_EXAMPLE=/usr/share/wayfire/examples/wayfire.ini
++        # Gentoo ships the default config as /usr/share/wayfire/wayfire.ini, with
++        # no examples/ directory at all. Without this fallback the cp below fails
++        # silently, the session starts a bare Wayfire with no MATE components.
++        [ -e "$WAYFIRE_EXAMPLE" ] || WAYFIRE_EXAMPLE=/usr/share/wayfire/wayfire.ini
+         cp "$WAYFIRE_EXAMPLE" "$HOME/.config/mate/wayfire.ini"
+         #Ensure the file is writable as we try to alter it later
+         chmod u+w "$HOME/.config/mate/wayfire.ini"

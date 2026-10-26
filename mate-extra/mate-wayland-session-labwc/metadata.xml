@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE pkgmetadata SYSTEM "https://www.gentoo.org/dtd/metadata.dtd">
+<pkgmetadata>
+	<maintainer type="person">
+		<name>kosmik2001</name>
+	</maintainer>
+	<longdescription>
+		Сессионный файл /usr/share/wayland-sessions/mate-wayland.desktop и
+		обёртка /usr/bin/mate-wayland-session: запускают MATE на Wayland под
+		композитором labwc, без X11-фолбэка (GDK_BACKEND=wayland).
+
+		mate-session-manager не используется: он всегда запускает оконный
+		менеджер (marco) и не умеет завершать Wayland-сессию. Компоненты
+		поднимает autostart самого композитора.
+	</longdescription>
+</pkgmetadata>

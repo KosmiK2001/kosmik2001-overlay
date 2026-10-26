@@ -1,0 +1,95 @@
+#!/bin/sh
+# MATE на Wayland из приватной сборки (dev-префикс), не трогая /usr.
+#
+# Раскладка префикса совпадает с образом portage: $PREFIX/usr/bin, $PREFIX/usr/lib64,
+# $PREFIX/usr/share. Наполняется скриптом mate-dev-build (ebuild ... install + rsync).
+#
+# Отличия от системной сессии — только окружение: PATH, LD_LIBRARY_PATH,
+# XDG_DATA_DIRS, GSETTINGS_SCHEMA_DIR, GI_TYPELIB_PATH и переписанный autostart.
+# Всё остальное (wayfire, wayfire.ini, mate-session) — то же, что в системной.
+
+set -u
+
+PREFIX=${MATE_DEV_PREFIX:-$HOME/mate-dev}
+LOG="$PREFIX/session.log"
+
+if [ ! -d "$PREFIX/usr/bin" ]; then
+	echo "start-mate-wayland-dev: нет $PREFIX/usr/bin" >&2
+	echo "Соберите префикс: sudo mate-dev-build mate-base/mate-panel ..." >&2
+	sleep 8
+	exit 1
+fi
+
+# --- 1. окружение: приватные бинари, библиотеки, схемы, данные ---------------
+export MATE_DEV_PREFIX="$PREFIX"
+export PATH="$PREFIX/usr/bin:$PATH"
+export LD_LIBRARY_PATH="$PREFIX/usr/lib64:$PREFIX/usr/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+export XDG_DATA_DIRS="$PREFIX/usr/share:${XDG_DATA_DIRS:-/usr/local/share:/usr/share}"
+export GSETTINGS_SCHEMA_DIR="$PREFIX/usr/share/glib-2.0/schemas"
+export GI_TYPELIB_PATH="$PREFIX/usr/lib64/girepository-1.0${GI_TYPELIB_PATH:+:$GI_TYPELIB_PATH}"
+export GTK_CSD=0
+
+# --- 2. autostart: абсолютные /usr/... заменяем на префикс, если файл там есть
+# mate-session берёт autostart из g_get_system_config_dirs() = XDG_CONFIG_DIRS,
+# поэтому генерируем каталог с переписанными копиями и ставим его первым.
+GEN="$PREFIX/generated"
+rm -rf "$GEN/autostart"
+mkdir -p "$GEN/autostart"
+
+rewrite_one() {
+	src=$1
+	dst=$2
+	: > "$dst"
+	while IFS= read -r line; do
+		case $line in
+		Exec=*|TryExec=*)
+			key=${line%%=*}
+			val=${line#*=}
+			prog=${val%% *}
+			rest=${val#"$prog"}
+			case $prog in
+			/usr/*)
+				if [ -x "$PREFIX$prog" ]; then
+					line="$key=$PREFIX$prog$rest"
+				fi
+				;;
+			esac
+			;;
+		esac
+		printf '%s\n' "$line" >> "$dst"
+	done < "$src"
+}
+
+for f in /etc/xdg/autostart/*.desktop; do
+	[ -e "$f" ] || continue
+	rewrite_one "$f" "$GEN/autostart/$(basename "$f")"
+done
+
+if [ -n "${XDG_CONFIG_DIRS:-}" ]; then
+	export XDG_CONFIG_DIRS="$GEN:$XDG_CONFIG_DIRS"
+else
+	export XDG_CONFIG_DIRS="$GEN:/etc/xdg"
+fi
+
+# --- 3. журнал: что именно запустится --------------------------------------
+{
+	echo "=== MATE dev-сессия $(date '+%F %T') ==="
+	echo "префикс: $PREFIX"
+	for b in mate-session mate-panel mate-settings-daemon caja \
+	         mate-notification-daemon mate-media mate-power-manager; do
+		p=$(command -v "$b" 2>/dev/null || true)
+		[ -n "$p" ] || [ ! -x "$PREFIX/usr/libexec/$b" ] || p="$PREFIX/usr/libexec/$b"
+		[ -n "$p" ] || [ ! -x "/usr/libexec/$b" ] || p="/usr/libexec/$b (системный)"
+		printf '%-26s %s\n' "$b" "${p:-НЕ НАЙДЕН}"
+	done
+	echo "-- модули апплетов панели в префиксе:"
+	ls "$PREFIX"/usr/lib64/mate-panel/lib*-applet.so 2>/dev/null | sed 's/^/   /' || echo "   нет"
+	echo "-- разрешение libmate-panel-applet у модуля панели:"
+	mod=$(ls "$PREFIX"/usr/lib64/mate-panel/libclock-applet.so 2>/dev/null | head -1)
+	if [ -n "$mod" ] && command -v ldd >/dev/null 2>&1; then
+		ldd "$mod" 2>/dev/null | awk '/libmate-panel-applet/{print "   " $0}'
+	fi
+	echo
+} >> "$LOG" 2>&1
+
+exec /usr/bin/startmatewayland

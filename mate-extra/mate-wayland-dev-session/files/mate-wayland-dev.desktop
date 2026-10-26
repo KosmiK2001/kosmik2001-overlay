@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=MATE (Wayland, dev-сборка)
+Name[en]=MATE (Wayland, dev build)
+Comment=MATE Wayland session from a private build prefix (~/mate-dev), system files untouched
+Comment[ru]=Сессия MATE на Wayland из приватной сборки (~/mate-dev), системные файлы не затрагиваются
+Exec=/usr/bin/start-mate-wayland-dev
+TryExec=/usr/bin/start-mate-wayland-dev
+Type=Application
+DesktopNames=MATE
+Keywords=wayland;mate;dev;test;

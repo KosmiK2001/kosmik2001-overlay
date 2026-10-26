@@ -1,0 +1,102 @@
+#!/bin/bash
+# Собирает пакет(ы) MATE из оверлея и ставит его в приватный префикс,
+# не трогая /usr. Префикс потом подхватывает сессия start-mate-wayland-dev.
+#
+#   sudo mate-dev-build mate-base/mate-panel            # один пакет
+#   sudo mate-dev-build mate-base/mate-panel mate-base/caja
+#   sudo mate-dev-build --all                           # всё, что есть в оверлее live
+#   sudo mate-dev-build --list
+#   sudo mate-dev-build --clean                         # снести префикс
+#
+# Сборка идёт теми же ebuild'ами (и теми же USE-флагами), что и системная:
+# никаких отдельных configure-опций, отличие только в том, что вместо qmerge
+# образ portage копируется в $PREFIX.
+
+set -u
+
+OVL=${MATE_DEV_OVERLAY:-/var/db/repos/kosmik2001}
+PREFIX=${MATE_DEV_PREFIX:-/home/${SUDO_USER:-$USER}/mate-dev}
+MAKEOPTS_ARG=${MAKEOPTS:-}
+
+die() { echo "mate-dev-build: $*" >&2; exit 1; }
+
+[ "$(id -u)" = 0 ] || die "нужен root (ebuild работает в /var/tmp/portage)"
+
+case ${1:-} in
+--clean)
+	rm -rf "$PREFIX"
+	echo "префикс удалён: $PREFIX"
+	exit 0
+	;;
+--list)
+	cd "$OVL" || die "нет $OVL"
+	find . -name '*-9999.ebuild' | sed 's#^\./##; s#/[^/]*$##' | sort -u
+	exit 0
+	;;
+--all)
+	cd "$OVL" || die "нет $OVL"
+	set -- $(find . -name '*-9999.ebuild' | sed 's#^\./##; s#/[^/]*$##' | sort -u)
+	;;
+"")
+	echo "использование: mate-dev-build [--all|--list|--clean] <категория/пакет> ..." >&2
+	exit 1
+	;;
+esac
+
+mkdir -p "$PREFIX" || die "не могу создать $PREFIX"
+
+build_one() {
+	local atom=$1 cat pn eb img
+	cat=${atom%%/*}
+	pn=${atom##*/}
+	pn=${pn%-9999}
+	[ -n "$cat" ] && [ "$cat" != "$atom" ] || die "нужен вид категория/пакет: $atom"
+
+	eb="$OVL/$cat/$pn/$pn-9999.ebuild"
+	[ -f "$eb" ] || die "нет ebuild: $eb"
+
+	echo
+	echo "=== $cat/$pn ==="
+	if ! ebuild "$eb" clean unpack prepare compile install >"/tmp/mate-dev-${pn}.log" 2>&1; then
+		echo "!!! сборка $pn упала, лог: /tmp/mate-dev-${pn}.log" >&2
+		tail -15 "/tmp/mate-dev-${pn}.log" >&2
+		return 1
+	fi
+
+	img="/var/tmp/portage/$cat/$pn-9999/image"
+	[ -d "$img" ] || die "нет образа: $img"
+
+	# без --delete: иначе затрём файлы других пакетов, уже лежащих в префиксе
+	rsync -aH "$img"/ "$PREFIX"/ || die "rsync упал"
+	local n
+	n=$(find "$img" -type f | wc -l)
+	echo "    установлено файлов: $n → $PREFIX"
+	return 0
+}
+
+fail=0
+built=()
+for atom in "$@"; do
+	if build_one "$atom"; then
+		built+=("$atom")
+	else
+		fail=1
+	fi
+done
+
+# схемы gsettings в префиксе надо скомпилировать, иначе g_settings_new() не найдёт их
+if [ -d "$PREFIX/usr/share/glib-2.0/schemas" ]; then
+	glib-compile-schemas "$PREFIX/usr/share/glib-2.0/schemas" 2>/dev/null \
+		&& echo "схемы gsettings перекомпилированы"
+fi
+# кэш иконок — необязательно, но без него часть иконок пропадает
+if [ -d "$PREFIX/usr/share/icons" ] && command -v gtk-update-icon-cache >/dev/null 2>&1; then
+	for d in "$PREFIX"/usr/share/icons/*/; do
+		[ -f "$d/index.theme" ] && gtk-update-icon-cache -q -t -f "$d" 2>/dev/null
+	done
+fi
+
+echo
+echo "готово: ${#built[@]} пакет(ов) в $PREFIX"
+[ "$fail" = 0 ] || { echo "были ошибки, см. выше" >&2; exit 1; }
+echo "запуск: сессия «MATE (Wayland, dev-сборка)» в SDDM, или $PREFIX/session.log после неё"

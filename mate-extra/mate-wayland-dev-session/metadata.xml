@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE pkgmetadata SYSTEM "https://www.gentoo.org/dtd/metadata.dtd">
+<pkgmetadata>
+	<maintainer type="person">
+		<email>kosmik2001@users.noreply.github.com</email>
+		<name>kosmik2001</name>
+	</maintainer>
+	<longdescription lang="ru">
+		Вторая Wayland-сессия MATE для SDDM: запускает тот же wayfire и
+		mate-session, но с окружением, поднятым на приватный префикс
+		(~/mate-dev). Позволяет проверять сборки любого компонента MATE —
+		не только панели — не переустанавливая системные пакеты: система
+		остаётся рабочей, а в сессии «MATE (Wayland, dev-сборка)» грузятся
+		бинари и библиотеки из префикса.
+
+		Наполнение префикса — скрипт mate-dev-build: собирает пакет штатным
+		ebuild'ом (те же USE-флаги и фазы, что у системной сборки) и копирует
+		образ portage в префикс вместо qmerge.
+	</longdescription>
+</pkgmetadata>

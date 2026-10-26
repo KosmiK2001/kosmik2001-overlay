@@ -22,7 +22,12 @@ LICENSE="GPL-2+ LGPL-2+"
 SLOT="0"
 KEYWORDS="**"
 
-IUSE="+introspection +mate nls selinux xmp"
+IUSE="+introspection +mate nls selinux wayland xmp"
+
+# configure.ac: --enable-wayland (по умолчанию auto) требует gtk-layer-shell-0 и
+# wayland-client; при auto поддержка молча выключается, если чего-то нет.
+# Флагом делаем её явной: для отладки MATE на Wayland молчаливый фолбэк
+# недопустим — сборка должна падать, если wayland-зависимостей нет.
 
 COMMON_DEPEND="
 	>=app-accessibility/at-spi2-core-2.46.0:2
@@ -46,6 +51,11 @@ COMMON_DEPEND="
 	>=x11-libs/pango-1.1.2
 	introspection? ( >=dev-libs/gobject-introspection-1.82.0-r2:= )
 	selinux? ( sys-libs/libselinux )
+	wayland? (
+		gui-libs/gtk-layer-shell
+		dev-libs/wayland
+		>=x11-libs/gtk+-3.22:3[wayland]
+	)
 	xmp? ( >=media-libs/exempi-1.99.5:2= )
 "
 
@@ -89,6 +99,7 @@ src_configure() {
 		--disable-update-mimedb \
 		$(use_enable introspection) \
 		$(use_enable nls) \
+		$(use_enable wayland) \
 		$(use_enable xmp)
 }
 

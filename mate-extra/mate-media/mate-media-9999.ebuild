@@ -20,6 +20,13 @@ LICENSE="FDL-1.1+ GPL-2+ HPND LGPL-2+"
 SLOT="0"
 KEYWORDS="**"
 
+IUSE="wayland"
+
+# configure.ac: --enable-wayland (по умолчанию auto) требует gtk-layer-shell-0,
+# wayland-client и gdk-wayland-3.0. Флаг заодно включает in-process сборку
+# апплета (--enable-in-process), без которой громкость под Wayland не работает:
+# configure выводит in-process из значения wayland.
+
 COMMON_DEPEND="
 	>=dev-libs/glib-2.50:2
 	dev-libs/libxml2:2=
@@ -33,6 +40,11 @@ COMMON_DEPEND="
 	x11-libs/cairo
 	>=x11-libs/gtk+-3.22:3
 	x11-libs/pango
+	wayland? (
+		gui-libs/gtk-layer-shell
+		dev-libs/wayland
+		>=x11-libs/gtk+-3.22:3[wayland]
+	)
 "
 
 BDEPEND="${COMMON_DEPEND}
@@ -43,3 +55,8 @@ DEPEND="${COMMON_DEPEND}
 	>=sys-devel/gettext-0.19.8
 	virtual/pkgconfig
 "
+
+src_configure() {
+	mate_src_configure \
+		$(use_enable wayland)
+}

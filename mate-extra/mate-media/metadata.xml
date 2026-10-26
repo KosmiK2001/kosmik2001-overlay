@@ -13,6 +13,10 @@
 		<email>proxy-maint@gentoo.org</email>
 		<name>Proxy Maintainers</name>
 	</maintainer>
+	<use>
+		<flag name="wayland">Build the Wayland volume applet: in-process
+		applet build plus gtk-layer-shell. Without it the applet is X11-only.</flag>
+	</use>
 	<upstream>
 		<remote-id type="github">mate-desktop/mate-media</remote-id>
 	</upstream>

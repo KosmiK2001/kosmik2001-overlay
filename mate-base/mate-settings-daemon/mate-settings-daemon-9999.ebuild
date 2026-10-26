@@ -25,9 +25,15 @@ LICENSE="GPL-2+ GPL-3+ HPND LGPL-2+ LGPL-2.1+"
 SLOT="0"
 KEYWORDS="**"
 
-IUSE="X accessibility debug libnotify policykit pulseaudio rfkill smartcard +sound"
+IUSE="X accessibility debug libnotify policykit pulseaudio rfkill smartcard +sound wayland"
 
 REQUIRED_USE="pulseaudio? ( sound )"
+
+# configure.ac: --enable-wayland (по умолчанию auto) требует gdk/gdkwayland.h,
+# wayland-client >= 1.18, wayland-protocols и gtk-layer-shell-0 >= 0.6.
+# Включает плагины background/clipboard с Wayland-бэкендами. Флагом делаем
+# автодетект явным: иначе wayland молча выключается при отсутствии любого из
+# этих пакетов, и «сборка прошла», а под Wayland не работает ничего.
 
 COMMON_DEPEND=">=dev-util/gdbus-codegen-2.80.5-r1
 	>=dev-libs/glib-2.50:2
@@ -42,6 +48,12 @@ COMMON_DEPEND=">=dev-util/gdbus-codegen-2.80.5-r1
 	x11-libs/libXi
 	x11-libs/libXext
 	>=x11-libs/libxklavier-5.2
+	wayland? (
+		>=dev-libs/wayland-1.18
+		dev-libs/wayland-protocols
+		gui-libs/gtk-layer-shell
+		>=x11-libs/gtk+-3.22:3[wayland]
+	)
 	accessibility? ( >=app-accessibility/at-spi2-core-2.36.0 )
 	libnotify? ( >=x11-libs/libnotify-0.7:0 )
 	policykit? (
@@ -83,5 +95,6 @@ src_configure() {
 		$(use_enable policykit polkit) \
 		$(use_enable pulseaudio pulse) \
 		$(use_enable rfkill) \
-		$(use_enable smartcard smartcard-support)
+		$(use_enable smartcard smartcard-support) \
+		$(use_enable wayland)
 }

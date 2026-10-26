@@ -14,5 +14,7 @@
 	</upstream>
 	<use>
 		<flag name="rfkill">build support for rfkill</flag>
+		<flag name="wayland">Build the Wayland backends of the background and
+		clipboard plugins.</flag>
 	</use>
 </pkgmetadata>

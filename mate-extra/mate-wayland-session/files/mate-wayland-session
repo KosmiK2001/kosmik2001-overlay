@@ -1,0 +1,25 @@
+#!/bin/sh
+# MATE на Wayland — чистая сессия без X11-фолбэка.
+#
+# Композитор: labwc (wlroots). Компоненты MATE поднимаются как его нативные
+# Wayland-клиенты (см. autostart рядом). Всё, что под Wayland не работает,
+# здесь падает громко и сразу — это и есть цель такой сессии.
+#
+# Строгий GDK_BACKEND=wayland означает: GTK-приложение, которое ещё не умеет
+# Wayland, не уползёт молча в XWayland, а умрёт с ошибкой в журнале. Если нужен
+# мягкий режим для сравнения — GDK_BACKEND=wayland,x11.
+
+export XDG_CURRENT_DESKTOP=MATE
+export XDG_SESSION_DESKTOP=mate-wayland
+export XDG_SESSION_TYPE=wayland
+
+# Строгий Wayland для всех тулкитов
+export GDK_BACKEND=wayland
+export QT_QPA_PLATFORM=wayland
+export SDL_VIDEODRIVER=wayland
+export CLUTTER_BACKEND=wayland
+export MOZ_ENABLE_WAYLAND=1
+export ELECTRON_OZONE_PLATFORM_HINT=wayland
+export _JAVA_AWT_WM_NONREPARENTING=1
+
+exec dbus-run-session -- labwc -C /usr/share/mate-wayland/labwc

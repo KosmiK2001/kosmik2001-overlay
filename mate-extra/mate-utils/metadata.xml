@@ -11,6 +11,8 @@
 		</maintainer>
 	<use>
 		<flag name="applet">Enable the mate dictionary applet</flag>
+		<flag name="wayland">Build Wayland support for mate-screenshot and
+		the dictionary applet.</flag>
 	</use>
 	<upstream>
 		<remote-id type="github">mate-desktop/mate-utils</remote-id>

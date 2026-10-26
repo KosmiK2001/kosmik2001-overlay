@@ -13,6 +13,9 @@
 		<flag name="mate">Install <pkg>x11-themes/mate-icon-theme</pkg> which 
 		is needed when this package is used in the MATE desktop 
 		environment.</flag>
+		<flag name="wayland">Build with Wayland support (gtk-layer-shell):
+		the desktop background and dialogs use native Wayland instead of
+		X11.</flag>
 	</use>
 	<upstream>
 		<remote-id type="github">mate-desktop/caja</remote-id>

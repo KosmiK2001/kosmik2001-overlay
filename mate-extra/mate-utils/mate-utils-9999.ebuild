@@ -22,7 +22,12 @@ LICENSE="FDL-1.1+ GPL-2+ GPL-3+ LGPL-2+"
 SLOT="0"
 KEYWORDS="**"
 
-IUSE="X applet debug nls test udisks"
+IUSE="X applet debug nls test udisks wayland"
+
+# configure.ac: --enable-wayland (по умолчанию auto) требует wayland-client
+# >= 1.18, wayland-protocols >= 1.24, gdk-wayland-3.0, gtk-layer-shell-0 >= 0.6
+# и wayland-scanner — включает Wayland-путь у mate-screenshot и апплета
+# словаря (иначе они молча остаются X11-only).
 RESTRICT="!test? ( test )"
 
 COMMON_DEPEND="
@@ -42,6 +47,12 @@ COMMON_DEPEND="
 	x11-libs/libX11
 	x11-libs/libXext
 	x11-libs/pango
+	wayland? (
+		>=dev-libs/wayland-1.18
+		>=dev-libs/wayland-protocols-1.24
+		gui-libs/gtk-layer-shell
+		>=x11-libs/gtk+-3.22:3[wayland]
+	)
 	applet? ( >=mate-base/mate-panel-1.28.0 )
 	udisks? ( >=sys-fs/udisks-1.90.0:2 )
 "
@@ -78,5 +89,6 @@ src_configure() {
 		$(use_with X x) \
 		$(use_enable applet gdict-applet) \
 		$(use_enable nls) \
-		$(use_enable udisks disk_image_mounter)
+		$(use_enable udisks disk_image_mounter) \
+		$(use_enable wayland)
 }

@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=MATE on Wayland
+Name[ru]=MATE на Wayland
+Comment=MATE desktop as native Wayland clients under the labwc compositor
+Comment[ru]=MATE нативными Wayland-клиентами под композитором labwc
+Exec=/usr/bin/mate-wayland-session
+TryExec=/usr/bin/mate-wayland-session
+Type=Application
+DesktopNames=MATE
+Keywords=wayland;labwc;mate;

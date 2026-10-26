@@ -1,0 +1,13 @@
+#!/bin/sh
+# Автозапуск компонентов MATE внутри сессии labwc.
+#
+# mate-session-manager на Wayland не используется сознательно: он всегда
+# запускает оконный менеджер (marco) и не умеет корректно завершать
+# Wayland-сессию. Это как раз одна из вещей, которую надо патчить, — а пока
+# сессией управляет композитор.
+
+mate-settings-daemon &
+mate-panel &
+caja -n &
+mate-notification-daemon &
+mate-polkit &

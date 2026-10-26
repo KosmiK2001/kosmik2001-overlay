@@ -20,7 +20,10 @@ DESCRIPTION="Session daemon for MATE that makes it easy to manage your laptop or
 LICENSE="FDL-1.1+ GPL-2+ LGPL-2+"
 SLOT="0"
 KEYWORDS="**"
-IUSE="+applet +elogind keyring policykit systemd test"
+IUSE="+applet +elogind keyring policykit systemd test wayland"
+
+# configure.ac: --enable-wayland (по умолчанию auto) требует wayland-client и
+# wayland-protocols — включает Wayland-бэкенд для ингибиторов/DPMS.
 
 # Interactive testsuite.
 RESTRICT="test"
@@ -43,6 +46,10 @@ COMMON_DEPEND="
 	x11-libs/libXrandr
 	>=x11-libs/libnotify-0.7:0
 	x11-libs/pango
+	wayland? (
+		dev-libs/wayland
+		dev-libs/wayland-protocols
+	)
 	applet? ( >=mate-base/mate-panel-1.28.0 )
 	keyring? ( >=app-crypt/libsecret-0.11 )
 "
@@ -69,7 +76,8 @@ src_configure() {
 		--enable-compile-warnings=minimum \
 		$(use_with keyring libsecret) \
 		$(use_enable applet applets) \
-		$(use_enable test tests)
+		$(use_enable test tests) \
+		$(use_enable wayland)
 }
 
 src_test() {

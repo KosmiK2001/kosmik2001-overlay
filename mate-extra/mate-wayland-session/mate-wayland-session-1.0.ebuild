@@ -24,10 +24,12 @@ RDEPEND="
 	>=mate-extra/mate-sensors-applet-1.28[in-process]
 	>=x11-misc/mate-notification-daemon-1.28[wayland]
 	mate-extra/mate-polkit
+	mate-base/mate-session-manager
 "
 
 src_install() {
 	dobin "${FILESDIR}"/mate-wayland-session
+	dobin "${FILESDIR}"/mate-wayland-wm-stub
 
 	insinto /usr/share/wayland-sessions
 	doins "${FILESDIR}"/mate-wayland.desktop

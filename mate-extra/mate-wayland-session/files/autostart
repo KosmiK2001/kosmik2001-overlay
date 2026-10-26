@@ -1,18 +1,23 @@
 #!/bin/sh
-# Автозапуск компонентов MATE внутри сессии labwc.
+# Автозапуск сессии MATE на Wayland.
 #
-# mate-session-manager на Wayland не используется сознательно: он всегда
-# запускает оконный менеджер (marco) и не умеет корректно завершать
-# Wayland-сессию. Это как раз одна из вещей, которую надо патчить, — а пока
-# сессией управляет композитор.
+# Компоненты поднимает mate-session, а не этот скрипт. Причина не в удобстве:
+# mate-session берёт на шине имя org.gnome.SessionManager, и именно его метод
+# Logout вызывает кнопка «Выход» в панели (mate-panel/libpanel-util/
+# panel-session-manager.c). Без менеджера сеанса завершение сеанса не работает
+# вообще, а mate-settings-daemon и polkit-агент не могут зарегистрироваться как
+# клиенты сеанса. Автозапуск приложений mate-session тоже берёт на себя —
+# /etc/xdg/autostart (mate-settings-daemon, mate-notification-daemon,
+# polkit-mate-authentication-agent-1 и прочее), плюс обязательные компоненты
+# panel='mate-panel' и filemanager='caja'.
 #
-# ВАЖНО: пути абсолютные. В Gentoo mate-settings-daemon,
-# mate-notification-daemon и mate-polkit лежат в /usr/libexec, а не в /usr/bin:
-# по имени из PATH они не находятся и молча не стартуют (в журнале — только
-# «command not found» от sh).
+# Оконного менеджера в Wayland-сессии нет — WM это композитор. Заглушка нужна,
+# чтобы mate-wm не полез искать в PATH marco: тот попытается захватить WM-выбор
+# в XWayland, который уже держит labwc, и упадёт.
+export WINDOW_MANAGER=/usr/bin/mate-wayland-wm-stub
 
-/usr/libexec/mate-settings-daemon &
-mate-panel &
-caja -n &
-/usr/libexec/mate-notification-daemon &
-/usr/libexec/polkit-mate-authentication-agent-1 &
+mate-session
+
+# mate-session завершился (logout или shutdown) — гасим композитор, чтобы
+# вернуться в greeter sddm. Без этого остаётся пустой экран с живым labwc.
+labwc --exit

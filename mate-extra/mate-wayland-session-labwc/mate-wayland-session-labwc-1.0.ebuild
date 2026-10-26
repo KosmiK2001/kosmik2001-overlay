@@ -32,7 +32,7 @@ src_install() {
 	dobin "${FILESDIR}"/mate-wayland-wm-stub
 
 	insinto /usr/share/wayland-sessions
-	doins "${FILESDIR}"/mate-wayland.desktop
+	doins "${FILESDIR}"/mate-wayland-labwc.desktop
 
 	insinto /usr/share/mate-wayland/labwc
 	doins "${FILESDIR}"/autostart

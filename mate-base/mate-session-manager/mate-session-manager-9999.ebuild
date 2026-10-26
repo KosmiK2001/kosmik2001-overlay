@@ -27,8 +27,15 @@ IUSE="debug elogind gles2 gnome-keyring nls systemd"
 # проверки типа дисплея. На чистом Wayland дисплее GDK_DISPLAY_XDISPLAY()
 # невалиден, и mate-session падает с SIGSEGV (rc=139) на старте — сессия
 # остаётся без менеджера сеанса, а значит и без завершения сеанса.
+#
+# Здесь применён ПУЛ-РЕКВЕСТ апстрима #340 «Wayland support»: отдельный
+# Wayland-бэкенд (--wayland, запуск композитора через startmatewayland),
+# пропуск required-components на Wayland, короткий таймаут фазы startup (3 с) и
+# idle через ext-idle-notify-v1. Он включает в себя X11-guard'ы для
+# msm-gnome.c и gs-idle-monitor.c, поэтому отдельный патч с ними больше не
+# нужен.
 PATCHES=(
-	"${FILESDIR}"/${PN}-9999-wayland-x11-guards.patch
+	"${FILESDIR}"/${PN}-9999-wayland-pr340.patch
 )
 
 # x11-misc/xdg-user-dirs{,-gtk} are needed to create the various XDG_*_DIRs, and

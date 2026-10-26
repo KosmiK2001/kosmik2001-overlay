@@ -356,6 +356,7 @@ $ grep -oE "/usr/[^ ]*\.so" /proc/$(pgrep -x mate-panel)/maps | grep applet
 | **MATE (Wayland)** | `mate-base/mate-session-manager-9999` + PR #340 | wayfire | `mate-session` | работает |
 | MATE (Wayland, без менеджера сеанса) | `mate-extra/mate-wayland-session-9999` | wayfire | нет | не работает |
 | MATE on Wayland (labwc) | `mate-extra/mate-wayland-session-labwc` | labwc | `mate-session` + заглушка WM | работает, но фаза startup ~30 с |
+| MATE (Wayland, dev-сборка) | `mate-extra/mate-wayland-dev-session` | wayfire | `mate-session` | работает — тот же `startmatewayland`, но из `~/mate-dev` |
 
 **Выбор: «MATE (Wayland)»** — это апстрим-PR
 [mate-session-manager#340](https://github.com/mate-desktop/mate-session-manager/pull/340),
@@ -398,3 +399,67 @@ $ grep -oE "/usr/[^ ]*\.so" /proc/$(pgrep -x mate-panel)/maps | grep applet
   нужен DRM.
 
 
+## Dev-сессия: сборка всего MATE в приватный префикс
+
+Четвёртый пункт в sddm — `MATE (Wayland, dev-сборка)` — запускает ту же
+wayfire-сессию, что и системную, но с окружением, поднятым на приватный
+префикс `~/mate-dev`. Системные файлы не трогаются: можно проверять сборку
+**любого** компонента MATE (не только панели), а рабочая сессия остаётся
+на системных пакетах.
+
+### Наполнение префикса
+
+```sh
+sudo mate-dev-build mate-base/mate-panel        # один пакет
+sudo mate-dev-build mate-base/caja mate-extra/mate-media
+sudo mate-dev-build --all                       # всё live-содержимое оверлея
+sudo mate-dev-build --list                      # что доступно
+sudo mate-dev-build --clean                     # снести префикс
+```
+
+Сборка идёт **штатным ebuild'ом** — те же USE-флаги, те же фазы, тот же
+`configure`/`meson`, что и у системной сборки. Отличие одно: вместо `qmerge`
+образ portage (`/var/tmp/portage/<cat>/<pn>-9999/image/`) копируется в
+`~/mate-dev`, после чего перекомпилируются схемы gsettings и кэш иконок.
+Раскладка префикса — как у `/`: `usr/bin`, `usr/lib64`, `usr/share`.
+
+Из ssh-сессии root переменная `SUDO_USER` пуста, поэтому префикс надо задать
+явно: `MATE_DEV_PREFIX=/home/<пользователь>/mate-dev`.
+
+### Что подменяет сессия
+
+`/usr/bin/start-mate-wayland-dev` выставляет и делает `exec startmatewayland`:
+
+| переменная | значение |
+|---|---|
+| `PATH` | `$PREFIX/usr/bin:$PATH` |
+| `LD_LIBRARY_PATH` | `$PREFIX/usr/lib64:$PREFIX/usr/lib:...` |
+| `XDG_DATA_DIRS` | `$PREFIX/usr/share:/usr/local/share:/usr/share` |
+| `GSETTINGS_SCHEMA_DIR` | `$PREFIX/usr/share/glib-2.0/schemas` |
+| `GI_TYPELIB_PATH` | `$PREFIX/usr/lib64/girepository-1.0` |
+| `XDG_CONFIG_DIRS` | `$PREFIX/generated:/etc/xdg` |
+
+`$PREFIX/generated/autostart/*.desktop` — копии `/etc/xdg/autostart` с
+переписанными `Exec=`/`TryExec=`: если бинарь есть в префиксе, путь ведёт в
+префикс, иначе остаётся `/usr/...`. Без этого `mate-session` запускал бы
+системные `mate-settings-daemon`, `mate-notification-daemon` и т.д., и
+тестовая сборка этих пакетов не проверялась бы вообще.
+
+### Журнал
+
+`~/mate-dev/session.log` после каждой dev-сессии: какой префикс, откуда
+взялся каждый ключевой бинарь (`mate-session`, `mate-panel`, `msd`, `caja`,
+`mnd`), какие модули апплетов лежат в префиксе и куда разрешается
+`libmate-panel-applet` у модуля панели. Если в журнале пути из `/usr/...` —
+значит, компонент в префикс не собирали, и сессия его не проверяет.
+
+### Ограничения
+
+- в префикс попадает только то, что собрано `mate-dev-build`; всё остальное
+  берётся из `/usr` — это нормально и есть суть схемы;
+- dconf общий с рабочей сессией: настройки, изменённые в dev-сессии, останутся
+  и в системной (отдельный профиль не заводится намеренно — иначе тест
+  описывал бы не ту конфигурацию);
+- `mate-terminal` одноэкземплярный: после обновления бинаря старый процесс
+  продолжает работать со старым кодом, для проверки нужен
+  `mate-terminal --disable-factory` или закрыть все окна.

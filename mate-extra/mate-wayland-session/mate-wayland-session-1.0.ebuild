@@ -7,6 +7,9 @@ LICENSE="GPL-2"
 SLOT="0"
 KEYWORDS="amd64"
 
+# Исходников нет — всё ставится из FILESDIR, поэтому S должен существовать.
+S="${WORKDIR}"
+
 # Сессия имеет смысл только с wayland-собранными компонентами: панель должна
 # уметь layer-shell (gtk-layer-shell + libxfce4windowing для window-list),
 # а демон уведомлений — свой wayland-бэкенд.

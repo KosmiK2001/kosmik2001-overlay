@@ -37,6 +37,18 @@ PATCHES=(
 	"${FILESDIR}"/${PN}-9999-gentoo-wayfire-ini-path.patch
 )
 
+src_prepare() {
+	# Два wayfire-сеанса ставят одинаковое имя «MATE (Wayland)»: этот и
+	# mate-wayland.desktop из PR mate-session-manager#340. В меню DM их не
+	# различить, поэтому уточняем: здесь сессии БЕЗ менеджера сеанса (кнопка
+	# «Выход» в панели не работает, конфиг — ~/.config/mate/wayfire.ini).
+	sed -i -e 's|^Name=MATE (Wayland)$|Name=MATE (Wayland, без менеджера сеанса)|' \
+		-e 's|^Comment=This session logs you into MATE using the Wayfire Wayland compositor$|Comment=MATE on Wayfire without a session manager: panel logout does not work, use the compositor to exit|' \
+		session/MATE.desktop.in || die
+
+	default
+}
+
 pkg_postinst() {
 	gnome2_schemas_update
 

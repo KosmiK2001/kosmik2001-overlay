@@ -163,3 +163,68 @@ sudo ebuild /var/db/repos/kosmik2001/mate-base/mate-panel/mate-panel-9999.ebuild
 `prepare` падает с `mate-doc-common: command not found` (для `PV=9999` он
 принудительно гоняет `ematedocize`). Поэтому первым — `mate-common-9999`, и
 только потом остальное.
+
+## MATE на Wayland
+
+Сессия для отладки Wayland: `mate-extra/mate-wayland-session` ставит
+`/usr/share/wayland-sessions/mate-wayland.desktop` (появится в меню любого DM,
+включая sddm) и обёртку `/usr/bin/mate-wayland-session`.
+
+### Флаг `wayland` обязателен, иначе тихий X11
+
+У `caja`, `mate-settings-daemon`, `mate-media`, `mate-power-manager`,
+`mate-utils`, `mate-panel` и `mate-notification-daemon` в `configure.ac` есть
+`AC_ARG_ENABLE([wayland])` **со значением по умолчанию `auto`**: при наличии
+`gtk-layer-shell-0` / `wayland-client` / `gdk-wayland-3.0` поддержка
+включается, при отсутствии — молча выключается, и «сборка прошла успешно»
+ничего не означает. Поэтому в оверлее у всех семи есть явный флаг `wayland`:
+
+```bash
+# /etc/portage/package.use/mate-wayland
+mate-base/caja                    wayland
+mate-base/mate-panel              wayland
+mate-base/mate-settings-daemon    wayland
+mate-extra/mate-media             wayland
+mate-extra/mate-power-manager     wayland
+mate-extra/mate-utils             wayland
+x11-misc/mate-notification-daemon wayland
+```
+
+Проверить, что wayland действительно собран, — по линковке бинарника:
+
+```bash
+ldd /usr/bin/caja /usr/bin/mate-panel /usr/bin/mate-notification-daemon \
+    /usr/bin/mate-volume-control-applet /usr/bin/mate-power-manager \
+    /usr/bin/mate-screenshot /usr/libexec/mate-settings-daemon \
+  | grep -E "wayland|gtk-layer-shell|xfce4windowing"
+```
+
+Если `libwayland-client.so` в выводе нет — пакет собран X11-only, независимо
+от того, что написало `emerge`.
+
+### Что внутри сессии
+
+Композитор — `labwc` (wlroots). `GDK_BACKEND=wayland` выставлен **без**
+`x11`-фолбэка: GTK-приложение, которое ещё не умеет Wayland, падает с ошибкой
+в журнале, а не уползает молча в XWayland. Для мягкого сравнения —
+`GDK_BACKEND=wayland,x11` в `/usr/bin/mate-wayland-session`.
+
+`mate-session-manager` в сессии **не участвует**: он всегда запускает оконный
+менеджер (`marco`, через `data/mate-wm`) и не умеет завершать Wayland-сессию —
+в master нет ни одной ветки кода на `XDG_SESSION_TYPE=wayland`, кроме
+регистрации в logind. Компоненты поднимает `autostart` композитора
+(`/usr/share/mate-wayland/labwc/autostart`): `mate-settings-daemon`,
+`mate-panel`, `caja -n`, `mate-notification-daemon`, `mate-polkit`.
+
+Выход из сессии — `labwc --exit` (или Ctrl+Alt+Backspace, если включён в
+`rc.xml`). Кнопка «Выход» в панели вызывает `mate-session-save` и без
+`mate-session` работать не будет — это одна из задач для патча.
+
+### Известные дыры (то, что и надо патчить)
+
+- `mate-session-manager` — нет Wayland-режима: старт WM, logout, autostart.
+- `marco` — X11-only, под Wayland не запускается вообще (WM = композитор).
+- `mate-screensaver` — X11-only (`XScreenSaver` extension).
+- `mate-desktop` (`mate-bg`) — фон рисуется через X11/Xrandr.
+- `caja` в режиме рабочего стола (`caja` без `-n`) — нет Wayland-пути.
+

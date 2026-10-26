@@ -202,6 +202,43 @@ ldd /usr/bin/caja /usr/bin/mate-panel /usr/bin/mate-notification-daemon \
 Если `libwayland-client.so` в выводе нет — пакет собран X11-only, независимо
 от того, что написало `emerge`.
 
+### Апплеты: только in-process
+
+Главное открытие headless-прогона: **под Wayland не работает ни один
+out-of-process апплет**. Панель запускает апплет через D-Bus-фабрику, а
+`libmate-panel-applet` умеет это только на X11:
+
+```
+** (wnck-applet): WARNING **: Requested out-of-process applet, which is only supported on X11
+dbus-daemon: Activated service 'org.mate.panel.applet.WnckletFactory' failed:
+             Process ... exited with status 1
+```
+
+То же для `clock-applet` и `notification-area-applet`. А по умолчанию все
+апплеты собираются именно out-of-process — это дефолт upstream:
+
+| пакет | ключ configure | дефолт |
+|---|---|---|
+| `mate-panel` | `--with-in-process-applets=clock,fish,notification-area,wncklet,all` | `none` |
+| `mate-applets` | `--enable-in-process` | `no` |
+| `mate-media` | `--enable-in-process` | следует за `wayland` |
+| `mate-utils` | `--enable-in-process` | `no` |
+| `mate-sensors-applet` | `--enable-in-process` | `no` |
+| `mate-notification-daemon` | `--enable-in-process` | `no` |
+
+В оверлее:
+
+```bash
+# /etc/portage/package.use/mate-wayland
+mate-base/mate-applets        in-process
+mate-extra/mate-sensors-applet in-process
+```
+
+плюс `mate-panel-9999` получает `--with-in-process-applets=$(usex wayland all none)`,
+а `mate-media`, `mate-utils`, `mate-notification-daemon` —
+`$(use_enable wayland in-process)`. In-process апплеты работают и на X11,
+теряется только изоляция падений, поэтому обычная сборка не ломается.
+
 ### Что внутри сессии
 
 Композитор — `labwc` (wlroots). `GDK_BACKEND=wayland` выставлен **без**
@@ -227,4 +264,8 @@ ldd /usr/bin/caja /usr/bin/mate-panel /usr/bin/mate-notification-daemon \
 - `mate-screensaver` — X11-only (`XScreenSaver` extension).
 - `mate-desktop` (`mate-bg`) — фон рисуется через X11/Xrandr.
 - `caja` в режиме рабочего стола (`caja` без `-n`) — нет Wayland-пути.
+- Апплеты — только in-process (см. выше); out-of-process на Wayland не
+  поддерживается в принципе, и это надо чинить в `libmate-panel-applet`
+  (D-Bus-фабрика + `panel-applet-container`), иначе сторонние апплеты
+  (sensors, indicator, сторонние .so) под Wayland не завести.
 

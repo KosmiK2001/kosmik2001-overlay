@@ -16,8 +16,31 @@
 # в XWayland, который уже держит labwc, и упадёт.
 export WINDOW_MANAGER=/usr/bin/mate-wayland-wm-stub
 
-mate-session
+# Запасной путь: если mate-session не поднимется (в master нет ни одной ветки
+# кода на XDG_SESSION_TYPE=wayland, и падение на старте — вполне возможный
+# сценарий), сессия всё равно должна собраться, только без менеджера сеанса.
+start_components() {
+	/usr/libexec/mate-settings-daemon &
+	mate-panel &
+	caja -n &
+	/usr/libexec/mate-notification-daemon &
+	/usr/libexec/polkit-mate-authentication-agent-1 &
+}
 
-# mate-session завершился (logout или shutdown) — гасим композитор, чтобы
-# вернуться в greeter sddm. Без этого остаётся пустой экран с живым labwc.
+mate-session &
+MS=$!
+sleep 3
+if kill -0 "$MS" 2>/dev/null; then
+	# Живём: ждём конца сеанса (logout/shutdown из меню).
+	wait "$MS"
+else
+	wait "$MS"
+	echo "mate-wayland-session: mate-session не поднялся (rc=$?)," \
+		"компоненты запускаю напрямую — завершение сеанса будет недоступно" >&2
+	start_components
+	wait
+fi
+
+# Сеанс завершён — гасим композитор, чтобы вернуться в greeter sddm. Без этого
+# остаётся пустой экран с живым labwc.
 labwc --exit

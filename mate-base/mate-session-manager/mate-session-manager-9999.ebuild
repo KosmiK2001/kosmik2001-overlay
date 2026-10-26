@@ -23,6 +23,14 @@ SLOT="0"
 KEYWORDS="**"
 IUSE="debug elogind gles2 gnome-keyring nls systemd"
 
+# msm-gnome.c дергает GDK_DISPLAY_XDISPLAY()/RootWindow() для smproxy без
+# проверки типа дисплея. На чистом Wayland дисплее GDK_DISPLAY_XDISPLAY()
+# невалиден, и mate-session падает с SIGSEGV (rc=139) на старте — сессия
+# остаётся без менеджера сеанса, а значит и без завершения сеанса.
+PATCHES=(
+	"${FILESDIR}"/${PN}-9999-wayland-smproxy-guard.patch
+)
+
 # x11-misc/xdg-user-dirs{,-gtk} are needed to create the various XDG_*_DIRs, and
 # create .config/user-dirs.dirs which is read by glib to get G_USER_DIRECTORY_*
 # xdg-user-dirs-update is run during login (see 10-user-dirs-update-gnome below).

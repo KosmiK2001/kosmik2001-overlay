@@ -20,6 +20,14 @@ LICENSE="FDL-1.1+ GPL-3+ LGPL-3+"
 SLOT="0"
 KEYWORDS="**"
 
+# terminal_window_draw() при включённой прозрачности заливает всю площадь окна
+# непрозрачным цветом темы (gtk_render_background), и полоса между краем окна и
+# экраном терминала становится белой рамкой — видно под Wayland. Патч заливает
+# её тем же полупрозрачным цветом, что и терминал.
+PATCHES=(
+	"${FILESDIR}"/${PN}-9999-wayland-transparency-frame.patch
+)
+
 COMMON_DEPEND="
 	>=app-accessibility/at-spi2-core-2.46.0
 	>=dev-libs/glib-2.50:2

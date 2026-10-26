@@ -5,7 +5,7 @@ HOMEPAGE="https://github.com/KosmiK2001/kosmik2001-overlay"
 
 LICENSE="GPL-2"
 SLOT="0"
-KEYWORDS="**"
+KEYWORDS="amd64"
 
 # Сессия имеет смысл только с wayland-собранными компонентами: панель должна
 # уметь layer-shell (gtk-layer-shell + libxfce4windowing для window-list),

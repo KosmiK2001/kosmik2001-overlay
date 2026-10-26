@@ -22,4 +22,12 @@ export MOZ_ENABLE_WAYLAND=1
 export ELECTRON_OZONE_PLATFORM_HINT=wayland
 export _JAVA_AWT_WM_NONREPARENTING=1
 
-exec dbus-run-session -- labwc -C /usr/share/mate-wayland/labwc
+# Шина сессии. При входе через sddm на systemd её поднимает pam_systemd
+# (user@.service -> /run/user/UID/bus), и плодить вторую шину через
+# dbus-run-session нельзя: порталы и dconf окажутся не в той шине. Свою шину
+# поднимаем только если её действительно нет.
+if [ -z "${DBUS_SESSION_BUS_ADDRESS}" ] && [ ! -S "${XDG_RUNTIME_DIR}/bus" ]; then
+	exec dbus-run-session -- labwc -C /usr/share/mate-wayland/labwc
+fi
+
+exec labwc -C /usr/share/mate-wayland/labwc

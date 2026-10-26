@@ -15,7 +15,14 @@
 set -u
 
 OVL=${MATE_DEV_OVERLAY:-/var/db/repos/kosmik2001}
-PREFIX=${MATE_DEV_PREFIX:-/home/${SUDO_USER:-$USER}/mate-dev}
+# Префикс по умолчанию — ~/mate-dev того пользователя, чья это сессия.
+# Из ssh-сессии root SUDO_USER пуст: молча писать в /root/mate-dev нельзя,
+# сессия пользователя этот каталог не увидит.
+PREFIX=${MATE_DEV_PREFIX:-}
+if [ -z "$PREFIX" ]; then
+	[ -n "${SUDO_USER:-}" ] || { echo "mate-dev-build: задайте MATE_DEV_PREFIX=/home/<пользователь>/mate-dev" >&2; exit 1; }
+	PREFIX="/home/$SUDO_USER/mate-dev"
+fi
 MAKEOPTS_ARG=${MAKEOPTS:-}
 
 die() { echo "mate-dev-build: $*" >&2; exit 1; }

@@ -346,3 +346,55 @@ $ grep -oE "/usr/[^ ]*\.so" /proc/$(pgrep -x mate-panel)/maps | grep applet
   compositor` — labwc не реализует `ext-workspace-v1`, поэтому связка
   окно↔рабочее место в `window-list`/`workspace-switcher` деградирует.
 
+## Три Wayland-сессии: что выбрать
+
+В оверлее теперь три пакета, и все три можно держать установленными — они
+ставят разные файлы и дают разные пункты в меню DM.
+
+| пункт в sddm | пакет | композитор | менеджер сеанса | «Выход» в панели |
+|---|---|---|---|---|
+| **MATE (Wayland)** | `mate-base/mate-session-manager-9999` + PR #340 | wayfire | `mate-session` | работает |
+| MATE (Wayland, без менеджера сеанса) | `mate-extra/mate-wayland-session-9999` | wayfire | нет | не работает |
+| MATE on Wayland (labwc) | `mate-extra/mate-wayland-session-labwc` | labwc | `mate-session` + заглушка WM | работает, но фаза startup ~30 с |
+
+**Выбор: «MATE (Wayland)»** — это апстрим-PR
+[mate-session-manager#340](https://github.com/mate-desktop/mate-session-manager/pull/340),
+наложенный на live-ebuild. Он делает то же, что наша labwc-сессия, но
+внутри `mate-session`.
+
+### Что даёт PR #340 (проверено headless)
+
+- `startmatewayland` запускает wayfire с приватной копией конфига
+  `~/.config/mate/wayfire/wayfire.ini` (шаблон — `/usr/share/mate-session-manager/wayfire.ini`);
+- в `[autostart]` wayfire стоит `session = mate-session; killall wayfire` —
+  сессия живёт как ребёнок композитора, и когда она кончается, wayfire умирает
+  сам, greeter возвращается без всяких watchdog'ов;
+- на Wayland пропускаются required-components
+  (`main: skipping '%s' required component on Wayland`) — это лечит нашу
+  проблему с `caja`, из-за которой сессия висела в startup;
+- `GSM_MANAGER_PHASE_TIMEOUT_WAYLAND = 3` секунды: `IsSessionRunning` возвращает
+  `(true,)` уже через 12 с после старта, а не через 30;
+- `org.gnome.SessionManager` на шине, `Logout(u)` работает:
+  `Logout(2)` гасит сессию целиком (проверено — через 8 с не остаётся ни
+  `mate-session`, ни `wayfire`, ни `mate-panel`);
+- idle-монитор через `ext-idle-notify-v1` вместо XSync/XTest;
+- в нём же X11-guard'ы для `msm-gnome.c` и `gs-idle-monitor.c`, из-за которых
+  mate-session падал с SIGSEGV — наши собственные патчи после этого удалены.
+
+### Чего не хватает в Gentoo для wayfire-сессий
+
+- **Плагин `ext-workspace` не собирается**: в `/usr/lib64/wayfire/` есть только
+  `libforeign-toplevel.so` и `libidle.so`, а шаблон `wayfire.ini` из PR его
+  подключает → `Failed to load plugin "ext-workspace"`. Следствие: связка
+  окно↔рабочее место в пейджере панели неполная. Пакета
+  `gui-wm/wayfire-plugins-extra` в дереве нет.
+- `gui-wm/wayfire` ставит дефолтный конфиг как `/usr/share/wayfire/wayfire.ini`
+  и не создаёт `examples/` — поэтому апстримный `mate-wayland.sh` (из
+  `mate-wayland-session`) нуждается в патче, иначе `cp` молча падает и сессия
+  стартует пустым Wayfire без компонентов MATE. Патч в оверлее есть.
+- `wayfire` отказывается стартовать от root (`Unable to drop root`), а также
+  требует GLES2: под `WLR_RENDERER=pixman` плагины cube/invert/switcher
+  не грузятся. Для headless-тестов это нормально, для реальной сессии
+  нужен DRM.
+
+

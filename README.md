@@ -106,6 +106,34 @@ conflict. Вариантов два:
   — тогда любой одиночный live-пакет ставится свободно. Возврат:
   `sudo emerge -1 =mate-base/mate-1.28.0`.
 
+### Сборка из PR, который ещё не влит
+
+Live-ebuild может собирать не master, а ветку PR — прямо, без локальных патчей:
+
+```ebuild
+inherit mate
+
+# ВРЕМЕННО: сборка из PR <ссылка> — ветка живёт в форке, поэтому и репозиторий
+# указывает на форк. После мержа обе строки удалить.
+EGIT_REPO_URI="https://github.com/KosmiK2001/mate-panel.git"
+EGIT_BRANCH="pr/tray-overflow"
+```
+
+Почему так, а не патчами: патч ломается при каждом изменении строк в upstream,
+а ветка обновляется сама — достаточно `ebuild ... clean install qmerge`, чтобы
+подтянуть новые коммиты PR. Eclass задаёт `EGIT_REPO_URI` на upstream при
+`inherit`, поэтому присваивание в ebuild после `inherit` его перекрывает.
+
+Так сейчас собирается `mate-panel-9999` — из
+[PR #1589](https://github.com/mate-desktop/mate-panel/pull/1589)
+(`pr/tray-overflow`, дровер-переполнение трея). Когда PR вольют, строки
+`EGIT_REPO_URI`/`EGIT_BRANCH` удаляются, и пакет снова идёт с upstream master.
+
+Для разового прогона без правки ebuild есть переменные окружения
+`EGIT_OVERRIDE_REPO_<ID>`, `EGIT_OVERRIDE_BRANCH_<ID>`, `EGIT_OVERRIDE_COMMIT_<ID>`
+(их список portage печатает при распаковке) — например через
+`/etc/portage/env/mate-live.conf` и `package.env`.
+
 ### Своё зеркало, ветка или коммит — основной инструмент разработки
 
 `git-r3` переопределяет координаты по имени репозитория (суффикс переменной —

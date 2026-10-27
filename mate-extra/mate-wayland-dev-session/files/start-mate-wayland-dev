@@ -111,6 +111,22 @@ mod=$(ls "$PREFIX"/usr/lib64/mate-panel/libclock-applet.so 2>/dev/null | head -1
 if [ -n "$mod" ] && command -v ldd >/dev/null 2>&1; then
 	ldd "$mod" 2>/dev/null | awk '/libmate-panel-applet/{print "   " $0}'
 fi
+# Префикс мог отстать от системных пакетов: тогда часть компонентов берётся
+# из префикса, часть из /usr, и смесь ломается (например applet из /usr просит
+# ключ схемы, которой в префиксе ещё нет → GLib-GIO-ERROR и SIGABRT панели).
+# Не чиним молча — пишем в журнал, что пересобрать.
+for b in mate-panel mate-settings-daemon caja mate-session; do
+	sys=$(command -v "$b" 2>/dev/null) || true
+	pre="$PREFIX/usr/bin/$b"
+	[ -x "$pre" ] || pre="$PREFIX/usr/libexec/$b"
+	[ -n "$sys" ] && [ -x "$pre" ] || continue
+	sys_t=$(stat -c %Y "$sys" 2>/dev/null || echo 0)
+	pre_t=$(stat -c %Y "$pre" 2>/dev/null || echo 0)
+	if [ "$sys_t" -gt "$pre_t" ]; then
+		echo "ВНИМАНИЕ: $b в системе новее, чем в префиксе ($(date -d @$sys_t '+%F %T') против $(date -d @$pre_t '+%F %T'))"
+		echo "           пересоберите: sudo mate-dev-build <категория>/$b"
+	fi
+done
 echo "-- запускаю startmatewayland"
 
 # --- 4. сессия --------------------------------------------------------------

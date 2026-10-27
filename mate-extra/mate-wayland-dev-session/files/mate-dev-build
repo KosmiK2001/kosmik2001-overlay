@@ -109,5 +109,13 @@ fi
 
 echo
 echo "готово: ${#built[@]} пакет(ов) в $PREFIX"
+
+# Префикс собирается от root, но читать/писать в него будет сессия пользователя:
+# без chown обёртка не сможет создать $PREFIX/generated (переписанный autostart).
+owner=${MATE_DEV_OWNER:-${SUDO_USER:-}}
+if [ -n "$owner" ] && id "$owner" >/dev/null 2>&1; then
+	chown -R "$owner": "$PREFIX" 2>/dev/null && echo "владелец префикса: $owner"
+fi
+
 [ "$fail" = 0 ] || { echo "были ошибки, см. выше" >&2; exit 1; }
-echo "запуск: сессия «MATE (Wayland, dev-сборка)» в SDDM, или $PREFIX/session.log после неё"
+echo "запуск: сессия «2. MATE (Wayland, dev-сборка)» в SDDM; журнал — ~/mate-dev-session.log"

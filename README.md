@@ -491,6 +491,9 @@ rc=N ===`: после чёрного экрана это единственны�
 тень рисуется как обычно. Непрозрачный профиль идёт по старой ветке без
 изменений.
 
+Отправлено апстрим: [mate-terminal#508](https://github.com/mate-desktop/mate-terminal/pull/508)
+(ветка `transparency-csd-margins` в форке `KosmiK2001/mate-terminal`).
+
 Важно для проверки:
 
 - headless это **не воспроизводит**: там `child == window` (0 полей) при любом

@@ -22,6 +22,15 @@ MATE_BRANCH="1.28"
 
 inherit mate
 
+# ВРЕМЕННО: сборка из нашего PR mate-panel#1589 «notification-area: add an
+# overflow drawer for tray icons» — ветка pr/tray-overflow в форке
+# KosmiK2001/mate-panel. Ветка живёт в форке, поэтому EGIT_REPO_URI тоже
+# указывает на форк: в upstream такой ветки нет.
+# Когда PR вольют в master — удалить обе строки ниже, и ebuild снова начнёт
+# брать upstream (eclass задаёт https://github.com/mate-desktop/mate-panel.git).
+EGIT_REPO_URI="https://github.com/KosmiK2001/mate-panel.git"
+EGIT_BRANCH="pr/tray-overflow"
+
 DESCRIPTION="The MATE panel"
 LICENSE="FDL-1.1+ GPL-2+ LGPL-2+"
 SLOT="0"

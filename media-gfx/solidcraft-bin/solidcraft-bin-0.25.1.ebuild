@@ -3,6 +3,8 @@
 
 EAPI=8
 
+inherit xdg-utils
+
 # Upstream names its release artifact after the source package, so the fetch name
 # cannot be built from ${PN} here.
 MY_PN="solidcraft"
@@ -91,29 +93,11 @@ src_install() {
 	doins -r share/icons/hicolor
 }
 
-# Refresh the three XDG caches (desktop / mime / icons). Upstream runs ONE
-# script for BOTH install and remove (packaging/linux/postinst.sh, wired as
-# postinstall AND postremove in nfpm.yaml), so pkg_postinst and pkg_postrm here
-# call the same helper. Written inline instead of inheriting xdg-utils.eclass on
-# purpose: `inherit cargo xdg-utils` breaks cargo.eclass's EXPORT_FUNCTIONS at
-# metadata time (die: cargo_src_unpack is not defined) in this tree, while the
-# light -bin ebuild takes xdg-utils happily. The eclass helpers would be tidier
-# (xdg_icon_cache_update also prunes stale per-theme caches); this is what works.
-_solidcraft_cache_update() {
-	if type -P update-desktop-database >/dev/null; then
-		update-desktop-database -q /usr/share/applications
-	fi
-	if type -P update-mime-database >/dev/null; then
-		update-mime-database /usr/share/mime
-	fi
-	if type -P gtk-update-icon-cache >/dev/null; then
-		gtk-update-icon-cache -q -t -f /usr/share/icons/hicolor
-	fi
-}
-
 pkg_postinst() {
 	# Same three caches packaging/linux/postinst.sh refreshes.
-	_solidcraft_cache_update
+	xdg_desktop_database_update
+	xdg_mimeinfo_database_update
+	xdg_icon_cache_update
 
 	elog "This is upstream's prebuilt binary, not a build of this ebuild. If it trips"
 	elog "over the CPU (SIGILL) or the GPU stack here, emerge media-gfx/solidcraft"
@@ -129,5 +113,7 @@ pkg_postinst() {
 }
 
 pkg_postrm() {
-	_solidcraft_cache_update
+	xdg_desktop_database_update
+	xdg_mimeinfo_database_update
+	xdg_icon_cache_update
 }

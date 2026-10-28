@@ -588,7 +588,7 @@ CRATES="
 # dev-lang/rust-bin; see the note at BDEPEND.
 RUST_MIN_VER="1.95"
 
-inherit cargo
+inherit cargo xdg-utils
 
 DESCRIPTION="Open-source parametric 3D CAD in pure Rust"
 HOMEPAGE="https://github.com/tangency-labs/solidcraft"
@@ -704,26 +704,11 @@ src_install() {
 	doins -r "${S}/assets/icons/app/linux/exports/hicolor"
 }
 
-# Refresh the three XDG caches (desktop / mime / icons). Upstream runs ONE
-# script for BOTH install and remove (packaging/linux/postinst.sh, wired as
-# postinstall AND postremove in nfpm.yaml), so both pkg phases here call the
-# same helper. Inline rather than inheriting xdg-utils.eclass: this ebuild
-# inherits cargo, and the refresh is three guarded one-liners.
-_solidcraft_cache_update() {
-	if type -P update-desktop-database >/dev/null; then
-		update-desktop-database -q /usr/share/applications
-	fi
-	if type -P update-mime-database >/dev/null; then
-		update-mime-database /usr/share/mime
-	fi
-	if type -P gtk-update-icon-cache >/dev/null; then
-		gtk-update-icon-cache -q -t -f /usr/share/icons/hicolor
-	fi
-}
-
 pkg_postinst() {
 	# Same three caches packaging/linux/postinst.sh refreshes.
-	_solidcraft_cache_update
+	xdg_desktop_database_update
+	xdg_mimeinfo_database_update
+	xdg_icon_cache_update
 
 	elog "SolidCraft stores agent-chat API keys in the system keychain. On Linux that"
 	elog "is the Secret Service over D-Bus, so a provider must be running"
@@ -736,5 +721,7 @@ pkg_postinst() {
 }
 
 pkg_postrm() {
-	_solidcraft_cache_update
+	xdg_desktop_database_update
+	xdg_mimeinfo_database_update
+	xdg_icon_cache_update
 }

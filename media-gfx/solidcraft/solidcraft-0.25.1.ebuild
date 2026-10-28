@@ -704,8 +704,12 @@ src_install() {
 	doins -r "${S}/assets/icons/app/linux/exports/hicolor"
 }
 
-pkg_postinst() {
-	# Same three caches packaging/linux/postinst.sh refreshes.
+# Refresh the three XDG caches (desktop / mime / icons). Upstream runs ONE
+# script for BOTH install and remove (packaging/linux/postinst.sh, wired as
+# postinstall AND postremove in nfpm.yaml), so both pkg phases here call the
+# same helper. Inline rather than inheriting xdg-utils.eclass: this ebuild
+# inherits cargo, and the refresh is three guarded one-liners.
+_solidcraft_cache_update() {
 	if type -P update-desktop-database >/dev/null; then
 		update-desktop-database -q /usr/share/applications
 	fi
@@ -715,6 +719,11 @@ pkg_postinst() {
 	if type -P gtk-update-icon-cache >/dev/null; then
 		gtk-update-icon-cache -q -t -f /usr/share/icons/hicolor
 	fi
+}
+
+pkg_postinst() {
+	# Same three caches packaging/linux/postinst.sh refreshes.
+	_solidcraft_cache_update
 
 	elog "SolidCraft stores agent-chat API keys in the system keychain. On Linux that"
 	elog "is the Secret Service over D-Bus, so a provider must be running"
@@ -724,4 +733,8 @@ pkg_postinst() {
 	elog "CJK and Arabic UI text falls back to fonts found in the system font"
 	elog "directories. Point SOLIDCRAFT_FONT_DIRS (colon separated) or CRAFT_FONTS_DIR"
 	elog "at a font pack to override, e.g. media-fonts/noto-cjk for Japanese/Chinese."
+}
+
+pkg_postrm() {
+	_solidcraft_cache_update
 }

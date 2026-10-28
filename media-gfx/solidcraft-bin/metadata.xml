@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE pkgmetadata SYSTEM "https://www.gentoo.org/dtd/metadata.dtd">
+<pkgmetadata>
+	<maintainer type="person">
+		<email>kosmik2001@localhost</email>
+		<name>kosmik2001</name>
+	</maintainer>
+	<upstream>
+		<remote-id type="github">tangency-labs/solidcraft</remote-id>
+	</upstream>
+	<longdescription lang="en">
+SolidCraft is an open-source parametric 3D CAD application written in pure Rust.
+It features a constraint-based sketch solver, a parametric feature timeline,
+component and joint system, and support for STEP, IGES, 3MF, STL and OBJ formats.
+Includes solidcraft-cli, a headless command runner and MCP server for AI agents.
+	</longdescription>
+</pkgmetadata>

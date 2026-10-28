@@ -625,7 +625,12 @@ CDEPEND="
 	sys-apps/dbus
 	|| ( media-libs/vulkan-loader media-libs/libglvnd[X] )
 "
-RDEPEND="${CDEPEND}"
+# The block on the prebuilt package: both install the same paths, so they are
+# alternatives, not co-installables (see media-gfx/solidcraft-bin).
+RDEPEND="
+	!media-gfx/solidcraft-bin:0
+	${CDEPEND}
+"
 
 # libdbus-sys (keyring -> dbus-secret-service -> dbus -> libdbus-sys) needs dbus.pc.
 # virtual/pkgconfig: the -sys crates in the tree locate their libraries with it.

@@ -20,6 +20,9 @@ RESTRICT="bindist mirror strip"
 # $ORIGIN:$ORIGIN/lib) — системный Qt не нужен. Ниже только ВНЕШНИЕ NEEDED,
 # снятые readelf со всех 160 ELF deb-пакета viber-27.3.0.2, со слотами/
 # подслотами ::gentoo на 2026-10.
+# x11-apps/xwininfo + x11-misc/xdotool — для помощника VIBER_START_HIDDEN:
+# без них он молча выходит, и «старт в трее» не работает (так случилось
+# после emerge --depclean). Пакеты крошечные.
 RDEPEND="
 	app-accessibility/at-spi2-core:2
 	app-arch/brotli:=
@@ -79,6 +82,8 @@ RDEPEND="
 	x11-libs/xcb-util-keysyms
 	x11-libs/xcb-util-renderutil
 	x11-libs/xcb-util-wm
+	x11-apps/xwininfo
+	x11-misc/xdotool
 "
 # В отличие от старых viber-ebuild здесь НЕТ media-video/ffmpeg-compat:58 и
 # gstreamer-стека: viber-27.3.0.2 бандлит ffmpeg-6 (libavcodec.so.61) и
@@ -131,9 +136,11 @@ src_install() {
 
 	# обёртка запуска: /etc/viber/viber.conf + qtpaths в PATH
 	newbin "${FILESDIR}/viber.sh" viber
-	# помощник старта свёрнутым в трей (VIBER_START_HIDDEN)
+	# помощник старта свёрнутым в трей (VIBER_START_HIDDEN).
+	# newexe, а не doexe: doexe сохранил бы имя .sh, а обёртка ищет
+	# /usr/libexec/viber/viber-start-hidden без суффикса.
 	exeinto /usr/libexec/viber
-	doexe "${FILESDIR}/viber-start-hidden.sh"
+	newexe "${FILESDIR}/viber-start-hidden.sh" viber-start-hidden
 	dosym viber /usr/bin/Viber
 
 	insinto /etc/viber

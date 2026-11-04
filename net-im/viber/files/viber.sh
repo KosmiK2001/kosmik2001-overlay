@@ -62,6 +62,10 @@ fi
 if [ -n "$VIBER_START_HIDDEN" ] && [ -r /opt/viber/.viber-tray-patched ]; then
 	HELPER=/usr/libexec/viber/viber-start-hidden
 	if [ -x "$HELPER" ]; then
+		# конфиг читается через ".", т.е. даёт shell-переменные: без export
+		# помощник не увидит таймаут/задержку/отладку
+		export VIBER_START_HIDDEN_TIMEOUT VIBER_START_HIDDEN_DELAY \
+			VIBER_START_HIDDEN_DEBUG
 		"$HELPER" $$ &
 	else
 		echo "viber: VIBER_START_HIDDEN игнорируется: нет $HELPER" >&2

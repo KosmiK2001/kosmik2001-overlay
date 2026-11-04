@@ -28,6 +28,9 @@ RESTRICT="bindist mirror strip"
 # системный Qt не нужен. ВНИМАНИЕ: live-бинарь может сменить набор внешних
 # NEEDED — Portage об этом не узнает сам; при странностях запуска
 # (`ld.so: cannot open ...`) переснимите список с нового deb.
+# x11-apps/xwininfo + x11-misc/xdotool — для помощника VIBER_START_HIDDEN:
+# без них он молча выходит, и «старт в трее» не работает (так случилось
+# после emerge --depclean). Пакеты крошечные.
 RDEPEND="
 	app-accessibility/at-spi2-core:2
 	app-arch/brotli:=
@@ -87,6 +90,8 @@ RDEPEND="
 	x11-libs/xcb-util-keysyms
 	x11-libs/xcb-util-renderutil
 	x11-libs/xcb-util-wm
+	x11-apps/xwininfo
+	x11-misc/xdotool
 "
 
 BDEPEND="
@@ -178,9 +183,11 @@ src_install() {
 
 	# обёртка запуска: /etc/viber/viber.conf + qtpaths в PATH
 	newbin "${FILESDIR}/viber.sh" viber
-	# помощник старта свёрнутым в трей (VIBER_START_HIDDEN)
+	# помощник старта свёрнутым в трей (VIBER_START_HIDDEN).
+	# newexe, а не doexe: doexe сохранил бы имя .sh, а обёртка ищет
+	# /usr/libexec/viber/viber-start-hidden без суффикса.
 	exeinto /usr/libexec/viber
-	doexe "${FILESDIR}/viber-start-hidden.sh"
+	newexe "${FILESDIR}/viber-start-hidden.sh" viber-start-hidden
 	dosym viber /usr/bin/Viber
 
 	insinto /etc/viber

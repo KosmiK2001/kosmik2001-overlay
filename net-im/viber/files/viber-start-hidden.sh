@@ -10,17 +10,31 @@
 # нельзя.
 #
 # Как работает: дожидается регистрации StatusNotifierItem Viber'а на D-Bus,
-# затем (обязательно) пока главное окно реально отобразится IsViewable, и
-# один раз вызывает org.kde.StatusNotifierItem.Activate — ровно тот метод,
+# затем ждёт, пока главное окно отобразится И приложение закончит загрузку,
+# и один раз вызывает org.kde.StatusNotifierItem.Activate — ровно тот метод,
 # который mate notification-area шлёт по левому клику. С пропатченным QML
 # (USE=tray-toggle) это toggle: окно видимо -> прячется в трей.
 #
+# ПОЧЕМУ НЕЛЬЗЯ ПРЯТАТЬ СРАЗУ, КАК ПОЯВИЛОСЬ ОКНО (проверено на живом):
+# в MainWindow.qml висит
+#     onClosing: (close) => {
+#         if (contentLoader.item instanceof StartupAnimation) { Qt.exit(0); return }
+#         ...
+#     }
+# то есть пока идёт стартовая анимация, закрытие/скрытие окна = выход из
+# приложения. Скрытие через 6 с после exec убивало Viber через ~30 с.
+# Признак готовности — процесс перестал жечь CPU (стартовая загрузка ~100%,
+# затем ~1%): ждём два подряд замера ниже порога. Проверено: скрытие по
+# этому признаку (t≈12 с) — приложение живёт, окно в трее.
+#
 # Особенности D-Bus-разведки (измерено на живой сессии):
 #  - у Viber 4 соединения шины, одно (WebEngine) не отвечает, и busctl
-#    get-property ждёт на нём ~25с (его --timeout на фазу подключения не
-#    действует) — поэтому опрос идёт gdbus --timeout 1 (<=4с на имя);
+#    get-property ждёт на нём ~25 с (его --timeout на фазу подключения не
+#    действует) — поэтому опрос идёт gdbus --timeout 1 (<=4 с на имя);
 #  - имена берутся из busctl list по колонке PID (один вызов за проход),
-#    найденное/мёртвые кэшируются, чтобы не долбить шину повторно.
+#    найденное/мёртвые кэшируются, чтобы не долбить шину повторно;
+#  - well-known имени org.kde.StatusNotifierItem-<pid>-1 у Viber нет,
+#    иконка находится только опросом уникальных имён процесса.
 #
 # Запускается в фоне из /usr/bin/viber, сам Viber не трогает и не убивает.
 
@@ -29,11 +43,24 @@ GDBUS=$(command -v gdbus)
 BUSCTL=$(command -v busctl)
 XWININFO=$(command -v xwininfo)
 XDOTOOL=$(command -v xdotool)
-[ -n "$GDBUS" ] && [ -n "$BUSCTL" ] && [ -n "$XWININFO" ] && [ -n "$XDOTOOL" ] || exit 0
+for t in "$GDBUS" "$BUSCTL" "$XWININFO" "$XDOTOOL"; do
+	[ -n "$t" ] || { echo "viber-start-hidden: нужны gdbus/busctl/xwininfo/xdotool" >&2; exit 0; }
+done
 
-TIMEOUT=${VIBER_START_HIDDEN_TIMEOUT:-60}
+TIMEOUT=${VIBER_START_HIDDEN_TIMEOUT:-180}
 DEBUG_TAG=${VIBER_START_HIDDEN_DEBUG:-}
-dbg() { [ -n "$DEBUG_TAG" ] && echo "vsh: $*" >&2; return 0; }
+# При автостарте stderr уходит в никуда, поэтому с VIBER_START_HIDDEN_DEBUG=1
+# пишем ещё и в файл — иначе причину «не спряталось» не увидеть.
+if [ -n "$DEBUG_TAG" ]; then
+	LOG=${XDG_CACHE_HOME:-$HOME/.cache}/viber-start-hidden.log
+	: > "$LOG" 2>/dev/null || LOG=/dev/null
+fi
+dbg() {
+	[ -n "$DEBUG_TAG" ] || return 0
+	echo "vsh: $*" >&2
+	[ -n "$LOG" ] && echo "$(date '+%T') vsh: $*" >> "$LOG"
+	return 0
+}
 
 END_TS=$(( $(date +%s) + TIMEOUT ))
 DEAD=''
@@ -73,9 +100,19 @@ window_viewable() {
 	return 1
 }
 
+# Сколько jiffies CPU процесс сжёг за 1 с (0 = простаивает)
+cpu_delta() {
+	local a b
+	a=$(awk '{print $14+$15}' "/proc/$VPID/stat" 2>/dev/null) || return 1
+	sleep 1
+	b=$(awk '{print $14+$15}' "/proc/$VPID/stat" 2>/dev/null) || return 1
+	echo $((b - a))
+}
+
 dbg "жду SNI-иконку Viber (PID $VPID, timeout ${TIMEOUT}s)"
 
 while [ "$(date +%s)" -lt "$END_TS" ]; do
+	kill -0 "$VPID" 2>/dev/null || { dbg "процесс завершился — выход"; exit 0; }
 	ITEM=$(find_item)
 	[ -n "$ITEM" ] && break
 	sleep 2
@@ -90,13 +127,47 @@ while [ "$(date +%s)" -lt "$END_TS" ]; do
 	sleep 1
 done
 window_viewable || { dbg "окно не отобразилось — выход"; exit 0; }
-sleep "${VIBER_START_HIDDEN_DELAY:-1}"
-window_viewable || { dbg "окно исчезло до вызова — выход"; exit 0; }
-dbg "окно видимо -> Activate ($ITEM)"
+dbg "окно видимо, жду готовности (CPU)"
 
+# Ждём окончания стартовой загрузки: два подряд замера ниже порога.
+# Порог 5 jiffies/с ≈ 5% одного ядра — старт Viber держит 40-100%.
+READY=0
+while [ "$(date +%s)" -lt "$END_TS" ]; do
+	kill -0 "$VPID" 2>/dev/null || { dbg "процесс завершился — выход"; exit 0; }
+	d=$(cpu_delta) || break
+	if [ "${d:-99}" -le 5 ]; then
+		READY=$((READY + 1))
+		[ "$READY" -ge 2 ] && break
+	else
+		READY=0
+	fi
+done
+if [ "$READY" -ge 2 ]; then
+	dbg "загрузка завершена (CPU $d jiffies/s)"
+else
+	# не дождались простоя — скрываем, но с запасом по времени
+	dbg "простоя не дождались, пауза ${VIBER_START_HIDDEN_DELAY:-10}s"
+	sleep "${VIBER_START_HIDDEN_DELAY:-10}"
+fi
+window_viewable || { dbg "окно уже не видимо — выход"; exit 0; }
+
+dbg "окно видимо -> Activate ($ITEM)"
 "$GDBUS" call --session --timeout 3 --dest "$ITEM" \
 	--object-path /StatusNotifierItem \
 	--method org.kde.StatusNotifierItem.Activate 1 1 >/dev/null 2>&1
 rc=$?
-dbg "Activate rc=$rc"
+sleep 1
+if window_viewable; then
+	dbg "окно всё ещё видимо (rc=$rc) — повтор через 2 с"
+	sleep 2
+	"$GDBUS" call --session --timeout 3 --dest "$ITEM" \
+		--object-path /StatusNotifierItem \
+		--method org.kde.StatusNotifierItem.Activate 1 1 >/dev/null 2>&1
+	rc=$?
+	sleep 1
+	window_viewable && dbg "окно всё ещё видимо после повтора" \
+		|| dbg "скрыто со второй попытки"
+else
+	dbg "скрыто (rc=$rc)"
+fi
 exit $rc

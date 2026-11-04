@@ -26,8 +26,9 @@
 #VIBER_START_HIDDEN=1
 #  тонкая настройка: сколько секунд ждать иконку (default 40) и пауза перед
 #  вызовом, чтобы окно успело отобразиться (default 2):
-#VIBER_START_HIDDEN_TIMEOUT=40
-#VIBER_START_HIDDEN_DELAY=2
+#VIBER_START_HIDDEN_TIMEOUT=180
+#VIBER_START_HIDDEN_DELAY=1
+#VIBER_START_HIDDEN_DEBUG=1   # писать лог в ~/.cache/viber-start-hidden.log
 
 # Свой доп. флаг Qt/Chromium для Viber (например отладка):
 #VIBER_EXTRA_ARGS="--disable-gpu"

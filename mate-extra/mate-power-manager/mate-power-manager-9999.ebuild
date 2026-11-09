@@ -15,6 +15,15 @@ MATE_BRANCH="1.28"
 
 inherit mate virtualx
 
+# ВРЕМЕННО: сборка из нашего PR mate-power-manager#439 «brightness: support
+# desktops through DDC/CI and a gamma fallback» — ветка brightness-ddc в форке
+# KosmiK2001/mate-power-manager. Ветка живёт в форке, поэтому EGIT_REPO_URI тоже
+# указывает на форк: в upstream такой ветки нет.
+# Когда PR вольют в master — удалить обе строки ниже, и ebuild снова начнёт
+# брать upstream (eclass задаёт https://github.com/mate-desktop/mate-power-manager.git).
+EGIT_REPO_URI="https://github.com/KosmiK2001/mate-power-manager.git"
+EGIT_BRANCH="brightness-ddc"
+
 DESCRIPTION="Session daemon for MATE that makes it easy to manage your laptop or desktop"
 
 LICENSE="FDL-1.1+ GPL-2+ LGPL-2+"

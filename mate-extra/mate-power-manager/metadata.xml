@@ -13,6 +13,10 @@
 		<flag name="applet">Enable building of the MATE applet.</flag>
 		<flag name="wayland">Build Wayland support for inhibitors and
 		DPMS handling.</flag>
+		<flag name="ddcutil">Build DDC/CI support through libddcutil, which drives
+		the monitor's real backlight on desktops (no backlight property exists
+		there). Without it only the CRTC gamma ramp is available, and that only
+		dims the picture instead of changing the backlight.</flag>
 	</use>
 	<upstream>
 		<remote-id type="github">mate-desktop/mate-power-manager</remote-id>

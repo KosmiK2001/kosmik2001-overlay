@@ -29,7 +29,7 @@ DESCRIPTION="Session daemon for MATE that makes it easy to manage your laptop or
 LICENSE="FDL-1.1+ GPL-2+ LGPL-2+"
 SLOT="0"
 KEYWORDS="**"
-IUSE="+applet +elogind keyring policykit systemd test wayland"
+IUSE="+applet +ddcutil +elogind keyring policykit systemd test wayland"
 
 # configure.ac: --enable-wayland (по умолчанию auto) требует wayland-client и
 # wayland-protocols — включает Wayland-бэкенд для ингибиторов/DPMS.
@@ -61,6 +61,7 @@ COMMON_DEPEND="
 	)
 	applet? ( >=mate-base/mate-panel-1.28.0 )
 	keyring? ( >=app-crypt/libsecret-0.11 )
+	ddcutil? ( >=app-misc/ddcutil-2.0.0 )
 "
 
 RDEPEND="${COMMON_DEPEND}

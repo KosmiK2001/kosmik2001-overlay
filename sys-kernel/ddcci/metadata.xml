@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE pkgmetadata SYSTEM "https://www.gentoo.org/dtd/metadata.dtd">
+<pkgmetadata>
+	<longdescription>
+		Out-of-tree DDC/CI kernel drivers.  ddcci is the bus driver that talks to
+		the monitor, ddcci-backlight exposes the monitor's backlight as a standard
+		/sys/class/backlight device, so brightness works through the kernel
+		instead of a userspace DDC/CI client.
+	</longdescription>
+	<use>
+	</use>
+	<upstream>
+		<remote-id type="gitlab">ddcci-driver-linux/ddcci-driver-linux</remote-id>
+	</upstream>
+</pkgmetadata>

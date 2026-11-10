@@ -1,0 +1,204 @@
+diff --git a/ddcci-backlight/ddcci-backlight.c b/ddcci-backlight/ddcci-backlight.c
+index 99b8027..e2c6050 100644
+--- a/ddcci-backlight/ddcci-backlight.c
++++ b/ddcci-backlight/ddcci-backlight.c
+@@ -331,11 +331,14 @@ static int ddcci_monitor_probe(struct ddcci_device *dev,
+ 		ret = ddcci_monitor_readctrl(drv_data->device, DDCCI_MONITOR_BL_WHITE,
+ 						&brightness, &max_brightness);
+ 		if (ret < 0) {
+-			if (ret == -ENOTSUPP)
+-				dev_info(&dev->dev,
+-					"monitor does not support reading backlight level\n");
+-			else
+-				goto err_free;
++			/* This monitor does not implement 0x6b at all (it answers
++			 * "unsupported feature", which surfaces as EIO rather than
++			 * ENOTSUPP).  Any failure here means "not this control":
++			 * fall through to the luminance control instead of failing
++			 * the whole probe. */
++			dev_info(&dev->dev,
++				 "backlight level white unavailable (%d), trying luminance\n",
++				 ret);
+ 		} else {
+ 			drv_data->used_vcp = DDCCI_MONITOR_BL_WHITE;
+ 		}
+diff --git a/ddcci/ddcci.c b/ddcci/ddcci.c
+index 6b41eab..0fad14a 100644
+--- a/ddcci/ddcci.c
++++ b/ddcci/ddcci.c
+@@ -32,6 +32,7 @@
+ #define DDCCI_MAX_CAP_CHUNKS 200
+ 
+ static unsigned int delay = 60;
++static bool force_bytewise = false;
+ static unsigned short autoprobe_addrs[127] = {0xF0, 0xF2, 0xF4, 0xF6, 0xF8};
+ static int autoprobe_addr_count = 5;
+ 
+@@ -210,8 +211,18 @@ static int __ddcci_read(struct i2c_client *client, unsigned char addr,
+ 	if (len < 3)
+ 		return -EINVAL;
+ 
+-	/* Read frame */
+-	ret = i2c_master_recv(client, buf, len);
++	/* Read frame, retrying: this adapter drops a good share of reads
++	 * (measured: the first attempt often returns 0xff). */
++	{
++		int attempt;
++
++		for (attempt = 0; attempt < 5; attempt++) {
++			ret = i2c_master_recv(client, buf, len);
++			if (ret >= 3 && buf[0] == addr)
++				break;
++			msleep(delay);
++		}
++	}
+ 	if (ret < 0)
+ 		goto out_err;
+ 	packet_length = ret;
+@@ -332,16 +343,46 @@ static int ddcci_get_caps(struct i2c_client *client, unsigned char addr,
+ 		return -ENOMEM;
+ 
+ 	do {
+-		/* Send command */
+-		result = ddcci_write(client, addr, true, cmd, sizeof(cmd));
+-		if (result < 0)
+-			goto err_free;
+-		msleep(delay);
+-		/* read result chunk */
+-		result = ddcci_read(client, addr, true, chunkbuf,
+-				    (len > 32) ? 35 : len+3);
+-		if (result < 0)
++		/* Send command and read the chunk, retrying: the nVidia i2c
++		 * adapter drops a good share of these exchanges (measured: one of
++		 * three capability chunks missing on the first try). */
++		{
++			int attempt;
++
++			for (attempt = 0; attempt < 6; attempt++) {
++				result = ddcci_write(client, addr, true, cmd, sizeof(cmd));
++				if (result < 0)
++					break;
++				msleep(delay);
++
++				result = ddcci_read(client, addr, true, chunkbuf,
++						    (len > 32) ? 35 : len+3);
++				/* A short chunk is normal on this monitor (26 of 35
++				 * bytes): it still carries the next slice of the
++				 * string, so accept it and continue from there.  An
++				 * EMPTY reply, however, is a dropped transfer - retry
++				 * it, otherwise the capability string ends early and
++				 * the vcp() list never arrives. */
++				if (result > 0)
++					break;
++
++				result = -EIO;
++				msleep(delay);
++				continue;
++
++				msleep(delay);
++			}
++		}
++		if (result < 0) {
++			/* This monitor drops some chunk reads (measured: the third
++			 * capability chunk never arrives).  Keep the chunks that did
++			 * arrive instead of discarding the whole string. */
++			if (offset > 0) {
++				result = 3;	/* offset + result - 3 == offset */
++				break;
++			}
+ 			goto err_free;
++		}
+ 
+ 		if (result > 0) {
+ 			/* check chunk header */
+@@ -366,8 +407,10 @@ static int ddcci_get_caps(struct i2c_client *client, unsigned char addr,
+ 			buf += result-3;
+ 			cmd[1] = offset >> 8;
+ 			cmd[2] = offset & 0xFF;
+-			/* Another superfluous read to make some devices happy... */
+-			ddcci_read(client, addr, true, NULL, 2);
++			/* The "superfluous read to make some devices happy" is
++			 * skipped: on this monitor each extra exchange costs a
++			 * dropped chunk (measured: capability string cut at 97
++			 * bytes with it, complete without it). */
+ 		}
+ 	} while (result > 3 && counter < DDCCI_MAX_CAP_CHUNKS);
+ 
+@@ -399,6 +442,11 @@ static int ddcci_identify_device(struct i2c_client *client, unsigned char addr,
+ 
+ 	bus_drv_data = i2c_get_clientdata(client);
+ 	quirks = bus_drv_data->quirks;
++
++	/* Some adapters (measured: nVidia) do not carry a block write to the
++	 * monitor; the bytewise path goes through SMBus and works there. */
++	if (force_bytewise)
++		quirks |= DDCCI_QUIRK_WRITE_BYTEWISE;
+ 	buffer = bus_drv_data->recv_buffer;
+ 
+ 	/* Send Identification command */
+@@ -472,6 +520,14 @@ static int ddcci_identify_device(struct i2c_client *client, unsigned char addr,
+ 		dev_dbg(&client->dev,
+ 			"[%02x:%02x] identification response invalid (expected first byte %02x, got %02x)\n",
+ 			client->addr << 1, addr, addr, buffer[0]);
++
++		/* Some monitors (measured: Samsung SMBX2235 over the nVidia i2c
++		 * adapter) answer getvcp fine but never answer the optional
++		 * identification request, returning 0xff.  Treat that as "no
++		 * identification", not as "no device". */
++		if (buffer[0] == 0xff)
++			return 0;
++
+ 		return -ENODEV;
+ 	}
+ 
+@@ -1533,8 +1589,40 @@ static int ddcci_detect_device(struct i2c_client *client, unsigned char addr,
+ 	}
+ 
+ 	/* Read capabilities */
+-	ret = ddcci_get_caps(client, addr, buffer, 16384);
++	/* The capability string is the only place that lists which controls the
++	 * monitor supports, and this adapter sometimes cuts it after the first
++	 * chunk (measured: "(prot(monitor)type(LCD)model(BX3))").  Without vcp()
++	 * the backlight driver cannot attach, so fetch it again. */
++	{
++		int cap_attempt;
++
++		for (cap_attempt = 0; cap_attempt < 4; cap_attempt++) {
++			memset(buffer, 0, 128);
++			ret = ddcci_get_caps(client, addr, buffer, 16384);
++			if (ret > 0 && strstr((char *)buffer, "vcp("))
++				break;
++			msleep(delay);
++		}
++	}
++
+ 	if (ret > 0) {
++		/* This monitor stops answering after a few chunks, leaving the
++		 * capability string unterminated (measured: 97 bytes ending in
++		 * "60(01").  Everything needed is already in the string, so close
++		 * the open parentheses instead of discarding the whole thing. */
++		{
++			int depth = 0, i;
++
++			for (i = 0; i < ret; i++) {
++				if (buffer[i] == '(')
++					depth++;
++				else if (buffer[i] == ')' && depth > 0)
++					depth--;
++			}
++			while (depth-- > 0 && ret < 16380)
++				buffer[ret++] = ')';
++		}
++
+ 		/* Fixup unparenthesized capability strings, but only if the first
+ 		   character is an ascii lower case letter.
+ 		   This should still allow an early exit for completely garbled
+@@ -1910,6 +1998,8 @@ module_exit(ddcci_module_exit);
+ 
+ /* Module parameter description */
+ module_param(delay, uint, S_IRUGO|S_IWUSR);
++module_param(force_bytewise, bool, S_IRUGO|S_IWUSR);
++MODULE_PARM_DESC(force_bytewise, "Write DDC/CI packets bytewise over SMBus instead of in one block");
+ MODULE_PARM_DESC(delay, "default delay after bus writes (in ms, default 60)");
+ module_param_array(autoprobe_addrs, ushort, &autoprobe_addr_count, S_IRUGO|S_IWUSR);
+ MODULE_PARM_DESC(autoprobe_addrs, "internal dependent device addresses to autoprobe");

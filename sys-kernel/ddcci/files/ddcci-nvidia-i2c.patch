@@ -1,7 +1,29 @@
 diff --git a/ddcci-backlight/ddcci-backlight.c b/ddcci-backlight/ddcci-backlight.c
-index 99b8027..e2c6050 100644
+index 99b8027..7669d05 100644
 --- a/ddcci-backlight/ddcci-backlight.c
 +++ b/ddcci-backlight/ddcci-backlight.c
+@@ -302,8 +302,8 @@ static int ddcci_monitor_probe(struct ddcci_device *dev,
+ 	/* Get VCP list */
+ 	vcps = ddcci_find_capstr_item(dev->capabilities, "vcp", NULL);
+ 	if (IS_ERR(vcps)) {
+-		dev_info(&dev->dev,
+-			 "monitor doesn't provide a list of supported controls.\n");
++		dev_dbg(&dev->dev,
++			"monitor doesn't provide a list of supported controls.\n");
+ 		support_bl_white = support_luminance = true;
+ 	} else {
+ 		/* Check VCP list for supported VCPs */
+@@ -311,8 +311,8 @@ static int ddcci_monitor_probe(struct ddcci_device *dev,
+ 		support_luminance = ddcci_monitor_find_vcp(DDCCI_MONITOR_LUMINANCE, vcps);
+ 		/* Fallback to trying if no support is found */
+ 		if (!support_bl_white && !support_luminance) {
+-			dev_info(&dev->dev,
+-				 "monitor doesn't announce support for backlight or luminance controls.\n");
++			dev_dbg(&dev->dev,
++				"monitor doesn't announce support for backlight or luminance controls.\n");
+ 			support_bl_white = support_luminance = true;
+ 		}
+ 	}
 @@ -331,11 +331,14 @@ static int ddcci_monitor_probe(struct ddcci_device *dev,
  		ret = ddcci_monitor_readctrl(drv_data->device, DDCCI_MONITOR_BL_WHITE,
  						&brightness, &max_brightness);
@@ -16,14 +38,14 @@ index 99b8027..e2c6050 100644
 +			 * ENOTSUPP).  Any failure here means "not this control":
 +			 * fall through to the luminance control instead of failing
 +			 * the whole probe. */
-+			dev_info(&dev->dev,
-+				 "backlight level white unavailable (%d), trying luminance\n",
-+				 ret);
++			dev_dbg(&dev->dev,
++				"backlight level white unavailable (%d), trying luminance\n",
++				ret);
  		} else {
  			drv_data->used_vcp = DDCCI_MONITOR_BL_WHITE;
  		}
 diff --git a/ddcci/ddcci.c b/ddcci/ddcci.c
-index 6b41eab..0fad14a 100644
+index 6b41eab..00614e7 100644
 --- a/ddcci/ddcci.c
 +++ b/ddcci/ddcci.c
 @@ -32,6 +32,7 @@
@@ -193,7 +215,26 @@ index 6b41eab..0fad14a 100644
  		/* Fixup unparenthesized capability strings, but only if the first
  		   character is an ascii lower case letter.
  		   This should still allow an early exit for completely garbled
-@@ -1910,6 +1998,8 @@ module_exit(ddcci_module_exit);
+@@ -1542,7 +1630,7 @@ static int ddcci_detect_device(struct i2c_client *client, unsigned char addr,
+ 		   missing, as the second char must be the first character of a
+ 		   keyword. */
+ 		if (ret > 2 && buffer[0] >= 'a' && buffer[0] <= 'z') {
+-			dev_err(&device->dev, "DDC/CI device quirk detected: unparenthesized capability string\n");
++			dev_dbg(&device->dev, "DDC/CI device quirk detected: unparenthesized capability string\n");
+ 			device->capabilities = kzalloc(ret+3, GFP_KERNEL);
+ 			if (!device->capabilities) {
+ 				ret = -ENOMEM;
+@@ -1844,7 +1932,8 @@ static int __init ddcci_module_init(void)
+ 	pr_debug("initializing ddcci driver\n");
+ 
+ 	#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 8, 0)
+-	pr_warn("WARNING: Auto-probing of displays is not available on kernel 6.8 and later\n");
++	pr_info("Auto-probing of displays is not available on kernel 6.8 and later, "
++		"create the device manually\n");
+ 	#endif
+ 
+ 	/* Allocate a device number region for the character devices */
+@@ -1910,6 +1999,8 @@ module_exit(ddcci_module_exit);
  
  /* Module parameter description */
  module_param(delay, uint, S_IRUGO|S_IWUSR);

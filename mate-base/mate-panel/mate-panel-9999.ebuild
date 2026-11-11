@@ -28,8 +28,8 @@ inherit mate
 # указывает на форк: в upstream такой ветки нет.
 # Когда PR вольют в master — удалить обе строки ниже, и ebuild снова начнёт
 # брать upstream (eclass задаёт https://github.com/mate-desktop/mate-panel.git).
-EGIT_REPO_URI="https://github.com/KosmiK2001/mate-panel.git"
-EGIT_BRANCH="pr/tray-overflow"
+EGIT_REPO_URI="https://github.com/mate-desktop/mate-panel.git"
+EGIT_BRANCH="master"
 
 DESCRIPTION="The MATE panel"
 LICENSE="FDL-1.1+ GPL-2+ LGPL-2+"

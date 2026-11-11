@@ -86,6 +86,7 @@ src_configure() {
 		--enable-compile-warnings=minimum \
 		$(use_with keyring libsecret) \
 		$(use_enable applet applets) \
+		$(use_enable applet applets-in-process) \
 		$(use_enable test tests) \
 		$(use_enable wayland)
 }

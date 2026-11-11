@@ -29,7 +29,7 @@ inherit mate
 # Когда PR вольют в master — удалить обе строки ниже, и ebuild снова начнёт
 # брать upstream (eclass задаёт https://github.com/mate-desktop/mate-panel.git).
 EGIT_REPO_URI="https://github.com/mate-desktop/mate-panel.git"
-EGIT_BRANCH="master"
+EGIT_BRANCH="1.28"
 
 DESCRIPTION="The MATE panel"
 LICENSE="FDL-1.1+ GPL-2+ LGPL-2+"

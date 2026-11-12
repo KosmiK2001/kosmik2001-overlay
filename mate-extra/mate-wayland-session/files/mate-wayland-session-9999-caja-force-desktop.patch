@@ -1,0 +1,19 @@
+The session starts caja with -n so no file manager window appears.  On this
+build that is not enough for the desktop: "caja -n" exits with rc=0 without
+taking over the desktop even though org.mate.background show-desktop-icons is
+true, leaving the user with a bare panel.  --force-desktop makes caja manage the
+desktop regardless of the preference state read at startup; -n still suppresses
+the file manager window.  Verified on wayfire with the native wayland backend:
+icons appear on the first start, no window.
+
+--- a/session/mate-wayland-components.sh
++++ b/session/mate-wayland-components.sh
+@@ -23,7 +23,7 @@
+ restart_while_running polkit-mate-authentication-agent-1 &
+ restart_while_running mate-notification-daemon &
+ restart_while_running mate-settings-daemon &
+-restart_while_running caja -n &
++restart_while_running caja --force-desktop -n &
+ 
+ #Programs to start once (if we have them), matching Xorg behavior
+ nm-applet --indicator &

@@ -35,9 +35,6 @@ PATCHES=(
 	# ставит examples/. Без этого cp молча падает, и сессия стартует пустым
 	# Wayfire без компонентов MATE.
 	"${FILESDIR}"/${PN}-9999-gentoo-wayfire-ini-path.patch
-	# Без --force-desktop caja -n выходит, не взяв рабочий стол: сессия
-	# остаётся с голой панелью (show-desktop-icons=true не помогает).
-	"${FILESDIR}"/${PN}-9999-caja-force-desktop.patch
 )
 
 src_install() {

@@ -37,11 +37,16 @@ PATCHES=(
 	"${FILESDIR}"/${PN}-9999-gentoo-wayfire-ini-path.patch
 	# caja стартует до готовности шины/dconf и не берёт рабочий стол.
 	"${FILESDIR}"/${PN}-9999-caja-start-order.patch
+	# Панель шлёт logout в org.gnome.SessionManager, которого без gsm нет.
+	"${FILESDIR}"/${PN}-9999-session-manager-service.patch
 )
 
 src_install() {
 	meson_src_install
 
+	# Провайдер org.gnome.SessionManager для кнопки «Завершить сеанс».
+	exeinto /usr/libexec
+	doexe "${FILESDIR}"/mate-wayland-session-manager
 }
 
 src_prepare() {

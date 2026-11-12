@@ -1,0 +1,23 @@
+mate-wayland-session does not run mate-session, so nothing owns
+org.gnome.SessionManager on the session bus.  The panel's "Log out" action is a
+D-Bus call to that name, so it fails with ServiceUnknown and the button does
+nothing.  Start the small provider installed alongside this package; it ends the
+session via wayland-logout.
+
+--- a/session/mate-wayland-components.sh
++++ b/session/mate-wayland-components.sh
+@@ -23,6 +23,14 @@
+ restart_while_running polkit-mate-authentication-agent-1 &
+ restart_while_running mate-notification-daemon &
+ restart_while_running mate-settings-daemon &
++
++# The panel's "Log out" talks to org.gnome.SessionManager over D-Bus; without
++# mate-session nothing owns that name in this session, so the button does
++# nothing.  This tiny service provides the interface and ends the session via
++# wayland-logout.
++if [ -x /usr/libexec/mate-wayland-session-manager ]; then
++    restart_while_running /usr/libexec/mate-wayland-session-manager &
++fi
+ restart_while_running caja -n &
+ 
+ #Programs to start once (if we have them), matching Xorg behavior

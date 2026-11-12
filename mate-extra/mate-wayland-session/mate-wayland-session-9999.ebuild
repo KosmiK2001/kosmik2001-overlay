@@ -45,25 +45,9 @@ PATCHES=(
 src_install() {
 	meson_src_install
 
-	# Пункты в меню DM нумеруем: сессий четыре, и различать их по длинному
-	# описанию в списке неудобно. Номера закреплены за конкретными сессиями.
-	if [ -d "${D}"/usr/share/wayland-sessions ]; then
-		sed -i \
-			-e 's|^Name=MATE (Wayland)$|Name=1. MATE (Wayland)|' \
-			-e 's|^Name=MATE (Wayland, без менеджера сеанса)$|Name=4. MATE (Wayland, без менеджера сеанса)|' \
-			"${D}"/usr/share/wayland-sessions/*.desktop || die
-	fi
 }
 
 src_prepare() {
-	# Два wayfire-сеанса ставят одинаковое имя «MATE (Wayland)»: этот и
-	# mate-wayland.desktop из PR mate-session-manager#340. В меню DM их не
-	# различить, поэтому уточняем: здесь сессии БЕЗ менеджера сеанса (кнопка
-	# «Выход» в панели не работает, конфиг — ~/.config/mate/wayfire.ini).
-	sed -i -e 's|^Name=MATE (Wayland)$|Name=MATE (Wayland, без менеджера сеанса)|' \
-		-e 's|^Comment=This session logs you into MATE using the Wayfire Wayland compositor$|Comment=MATE on Wayfire without a session manager: panel logout does not work, use the compositor to exit|' \
-		session/MATE.desktop.in || die
-
 	default
 }
 

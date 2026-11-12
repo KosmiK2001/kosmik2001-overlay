@@ -1,0 +1,21 @@
+From: kosmik2001
+Subject: [PATCH] session: start caja with --force-desktop so the desktop is drawn
+
+On this build a plain "caja -n" comes up without managing the desktop when it
+starts during the session's early phase (measured on wayfire: no desktop icons
+until caja is restarted by the restart loop).  --force-desktop makes caja manage
+the desktop regardless of the preferences/environment it reads at startup, which
+is also what the X11 session ends up needing here.
+
+--- a/session/mate-wayland-components.sh
++++ b/session/mate-wayland-components.sh
+@@ -26,7 +26,7 @@
+ restart_while_running mate-panel &
+ restart_while_running polkit-mate-authentication-agent-1 &
+ restart_while_running mate-notification-daemon &
+ restart_while_running mate-settings-daemon &
+-restart_while_running caja -n &
++restart_while_running caja --force-desktop -n &
+ 
+ #Programs to start once (if we have them), matching Xorg behavior
+ nm-applet --indicator &

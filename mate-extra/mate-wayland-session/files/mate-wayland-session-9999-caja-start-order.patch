@@ -1,0 +1,28 @@
+caja is started at the same moment as the rest of the components, i.e. before
+the session bus and dconf are usable.  In that state caja stays alive but never
+takes over the desktop, so the user gets a bare panel; started by hand a few
+seconds later in the same session it works.  Wait until gsettings answers
+before handing caja to the restart loop (bounded, so a broken bus cannot hang
+the session).
+
+--- a/session/mate-wayland-components.sh
++++ b/session/mate-wayland-components.sh
+@@ -23,7 +23,17 @@
+ restart_while_running polkit-mate-authentication-agent-1 &
+ restart_while_running mate-notification-daemon &
+ restart_while_running mate-settings-daemon &
+-restart_while_running caja -n &
++# caja must not race the session bus/dconf: started too early it stays alive
++# but never takes over the desktop (bare panel).  Wait for gsettings to answer
++# and retry until the desktop window is actually there.
++(
++    i=0
++    while [ $i -lt 40 ]; do
++        gsettings get org.mate.background show-desktop-icons > /dev/null 2>&1 && break
++        i=$((i + 1)); sleep 0.25
++    done
++    restart_while_running caja -n
++) &
+ 
+ #Programs to start once (if we have them), matching Xorg behavior
+ nm-applet --indicator &

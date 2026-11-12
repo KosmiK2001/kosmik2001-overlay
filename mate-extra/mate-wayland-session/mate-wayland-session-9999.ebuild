@@ -35,6 +35,8 @@ PATCHES=(
 	# ставит examples/. Без этого cp молча падает, и сессия стартует пустым
 	# Wayfire без компонентов MATE.
 	"${FILESDIR}"/${PN}-9999-gentoo-wayfire-ini-path.patch
+	# caja стартует до готовности шины/dconf и не берёт рабочий стол.
+	"${FILESDIR}"/${PN}-9999-caja-start-order.patch
 )
 
 src_install() {

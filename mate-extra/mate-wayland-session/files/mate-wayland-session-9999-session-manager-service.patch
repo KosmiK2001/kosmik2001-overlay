@@ -18,6 +18,6 @@ session via wayland-logout.
 +if [ -x /usr/libexec/mate-wayland-session-manager ]; then
 +    restart_while_running /usr/libexec/mate-wayland-session-manager &
 +fi
- restart_while_running caja -n &
- 
- #Programs to start once (if we have them), matching Xorg behavior
+ # caja races the compositor: started in the same breath as the panel it stays
+ # alive but never creates the desktop window, leaving a bare panel; started by
+ # hand a few seconds later it works.  The panel is a layer-shell client, so its

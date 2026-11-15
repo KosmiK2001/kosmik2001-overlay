@@ -296,8 +296,9 @@ src_install() {
 	insinto "/usr/share/icons/xscreenlets"
 	# Ставим ВСЕ иконки из icons/, а не захардкоженный список: перечень
 	# типов апплетов расширялся, и applet_manager показывал для новых
-	# типов иконку-заглушку application-x-executable.
-	for f in icons/*.svg; do
+	# типов иконку-заглушку application-x-executable. В наборе есть и
+	# PNG tray-значок: glob только *.svg оставлял его вне пакета.
+	for f in icons/*.svg icons/*.png; do
 		[[ -f ${f} ]] && doins "${f}"
 	done
 

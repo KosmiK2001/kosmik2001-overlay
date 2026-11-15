@@ -55,6 +55,7 @@ DEPEND="
 	dev-libs/json-glib:0
 	x11-libs/libX11
 	x11-libs/libXext
+	gui-libs/gtk-layer-shell
 	sys-devel/gettext
 	"
 

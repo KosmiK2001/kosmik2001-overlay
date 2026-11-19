@@ -24,6 +24,14 @@ src_compile() {
 		"ddcci=extra:ddcci"
 		"ddcci-backlight=extra:ddcci-backlight"
 	)
+	# The upstream Makefiles take the build directory from `uname -r`, so the
+	# modules always come out for the RUNNING kernel no matter what KERNEL_DIR
+	# says. linux-mod-r1 installs into ${KV} (the selected sources), and the
+	# sanity check then aborts the merge with "module and source version
+	# mismatch". Override KDIR on the make command line - the Makefile uses a
+	# plain `:=`, which a command-line variable overrides. KV_OUT_DIR is the
+	# build tree the eclass wants here, so out-of-source builds keep working.
+	local modargs=( "KDIR=${KV_OUT_DIR}" )
 	linux-mod-r1_src_compile
 }
 
